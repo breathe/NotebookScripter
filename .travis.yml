@@ -33,10 +33,10 @@ after_success:
   - coveralls
 deploy:
   provider: pypi
-  user: {{ github_user }}
+  user: breathe
   distributions: sdist bdist_wheel
   on:
     condition: $TOXENV == py27
     tags: true
     all_branches: true
-    repo: {{ github_user }}/{{ repo_name }}
+    repo: breathe/NotebookScripter

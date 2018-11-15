@@ -1,19 +1,17 @@
 from setuptools import setup
 
 setup(
-    name='{{ package_name }}',
-    version='{{ package_version }}',
-    packages=('{{ package_dir_name }}',),
-    url='https://github.com/{{ github_user }}/{{ repo_name }}',
+    name='NotebookScripter',
+    version='1.0.0',
+    packages=('NotebookScripter',),
+    url='https://github.com/breathe/NotebookScripter',
     license='MIT',
-    author='{{ author_name }}',
-    author_email='{{ author_email }}',
-    install_requires=(
-        {{ install_requires|pytuple }}),
-    tests_require=(
-        {{ tests_require|pytuple }}),
+    author='N. Ben Cohen',
+    author_email='breathevalue@icloud.com',
+    install_requires=(),
+    tests_require=(),
     description=(
-        {{ short_description|pystring }}),
+        'Expose ipython jupyter notebooks as callable functions'),
     classifiers=(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2',
