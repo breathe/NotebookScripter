@@ -1,42 +1,23 @@
 language: python
 matrix:
   include:
-    - python: 2.6
-      env:
-      - TOXENV=py26
-    - python: 2.7
-      env:
-      - TOXENV=py27
-    - python: 3.3
-      env:
-      - TOXENV=py33
-    - python: 3.4
-      env:
-      - TOXENV=py34
-    - python: 3.5
-      env:
-      - TOXENV=py35
-    - python: 3.6
-      env:
-      - TOXENV=py36
-    - python: pypy
-      env:
-      - TOXENV=pypy
-    - python: pypy3
-      env:
-      - TOXENV=pypy3
+  - python: 3.6
+    env:
+    - TOXENV=py36
 install:
-  - pip install tox coveralls
+- pip install tox coveralls
 script:
-  - tox
+- tox
 after_success:
-  - coveralls
+- coveralls
 deploy:
   provider: pypi
-  user: breathe
+  user: breatheoften
   distributions: sdist bdist_wheel
   on:
-    condition: $TOXENV == py27
+    condition: "$TOXENV == py36"
     tags: true
     all_branches: true
     repo: breathe/NotebookScripter
+  password:
+    secure: u+mhGWnbQ53VJvNhLwuWQ1PrgOQi/fVn4M3KDUOfUp955x2mDmUU3b2FpQ2KMrzmMqhXPvcKPkVoa0hUoKmXBsc7eVcIRfotHqwt9Uuigr9P7ApKBgiBsFboAC26H+pZbKRaOVn/V26ajHWWtn7jr0bvsFJi8MCtXKufgMQCPtTZR2t94nhmdQVfPYK4mnuSHc2nvE7x7QbZ7X7ldQno4WILWe7vI+A+FcV7NlxjVNkbG/zBjC82qN2mN/jQJg4MwurFszQ07iX5N6TTtysjQBnHX9VcMCWW33q2LETsY8PZ4UQRQls/+YRMe9+72/usF1aUpxIngh07SRz7w4a9/EhFE4jYaO5lQGDzUfZ6yTEK3nyN+piD199zZ6Ahk74TXSCKmXG2pQyqTrDTV8d5q2B5qxvnxAW+qlTy3Q6lrMPgtyNB7ebInSh07B+YTNcDYI4Yu55pqMfu3ss20qDyse0KLbcnhGRJI/HU9IEjgjSI5bvxSlfOxuaIlHJp3GBDjBf9EDLm4cvKU/taX6sTbAEs01if3zHZOBXHvUzP922DRezme5SCOQIgveXyEBk3kRSvoAzsuNXSl1TFBNCFlYv26gDt4aDSAtspCqim3KDrqHMt7M9DAzUN1UKOgCajnke/Mjff/yrYr9wCsHVrs4qyuwc3HA2JC66oKs/FOc0=
