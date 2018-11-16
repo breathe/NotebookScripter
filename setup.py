@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='NotebookScripter',
-    version='1.0.0',
+    version='1.0.1',
     packages=('NotebookScripter',),
     url='https://github.com/breathe/NotebookScripter',
     license='MIT',
@@ -14,7 +14,7 @@ setup(
         'Expose ipython jupyter notebooks as callable functions'),
     classifiers=(
         'License :: OSI Approved :: MIT License',
-
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: Implementation :: CPython'))
+        'Programming Language :: Python :: Implementation :: CPython')
+)
