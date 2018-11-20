@@ -48,15 +48,15 @@ another_module = run_notebook("./Example.ipynb", {
 })
 ```
 
-In this case -- the value of `a_useful_mode_switch` selects idiot mode and the notebook prints: `Hello Flat Earthers`. But how -- if the notebook is still useable interactively, then it must mean that `some_useful_parameter` needs to be defined prior to being used and this would make our externally supplied value useless (as it would be re-defined within the notebook prior to having any useful effect). run_notebook supplies a simple convention to allow identifying which parameters of the notebook are intended to be supplied by an external caller. The convention is that `run_notebook` will only execute cells that DO_NOT contain NotebookScripter metadata value like the following:
+In this case -- the value of `a_useful_mode_switch` selects idiot mode and the notebook prints: `Hello Flat Earthers`. But how -- if the notebook is still useable interactively, then it must mean that `some_useful_parameter` needs to be defined prior to being used and this would make our externally supplied value useless (as it would be re-defined within the notebook prior to having any useful effect). `run_notebook` defines a simple convention to allow identifying which parameters of the notebook are intended to be supplied by an external caller. The convention is that `run_notebook` will only execute cells that _DO_NOT_ contain a cell metadata value like the following:
 
 ```json
     "NotebookScripter": "skip_cell"
 ```
 
-In `Example.ipynb` This annotation is added to the cell defining the `a_useful_mode_switch` variable.
+In `Example.ipynb` This annotation is present in the cell metadata for the cell defining the `a_useful_mode_switch` variable.
 
-This annotation can be added to any cell's which you do _NOT_ want to run when the notebook is executed by NotebookScripter. The pattern for turning notebook's into parameterizable workflows:
+This annotation can be added to any cell's which you do _NOT_ want to run when the notebook is executed by NotebookScripter. The pattern for turning notebook's into parameterizable workflows thus goes as follows:
 
 1. create a cell and define default values for any parameters you want the caller to supply
 2. annotate that cell with 'skip_cell' metadata.
@@ -65,7 +65,7 @@ When run interactively in the notebook, the values defined in that cell will be 
 
 ## Dealing with matplotlib
 
-run_notebook supports a third argument `with_backend` which defaults to 'agg'. run_notebook intercepts any usage of `%matplotlib` ipython line magic and replaces the argument with the value supplied by this parameter. For example
+`run_notebook` supports a third argument `with_backend` which defaults to 'agg'. `run_notebook` intercepts any usage of `%matplotlib` ipython line magic within the notebook and replaces the argument with the value supplied by this parameter. For example:
 
 ```python
 %matplotlib inline
@@ -74,28 +74,29 @@ import matplotlib.pyplot as plt
 # ...<some script that also produces plots>...
 ```
 
-When executed via run_notebook(..., with_backend='agg') - the line `%matplotlib inline` will instead be interpreted as `%matplotlib agg`.
+When executed via run_notebook(..., with_backend='agg') - the line `%matplotlib inline` will instead be interpreted like `%matplotlib agg`.
 
 This functionality allows 'interactive' plotting backend selection in the notebook environment and 'non-interactive' backend selection in the scripting context. 'agg' is a non-interactive backend built into most distributions of matplotlib. To disable this functionality provide `with_backend=None`.
 
 ## Execute a notebook in isolated subprocess
 
-run_notebook runs notebook's within the same process as the caller. Sometimes more isolation between notebook executions is desired or requried. NotebookScripter provides a run_notebook_in_process function for this case:
+`run_notebook` executes notebook's within the same process as the caller. Sometimes more isolation between notebook executions is desired or requried. NotebookScripter provides a run_notebook_in_process function for this case:
 
 ```python
 from NotebookScripter import run_notebook_in_process
 
 # run notebook in subprocess
-run_notebook_in_process("./example.ipynb", {"some_useful_paramer": "any_json_serializable_value"})
+run_notebook_in_process("./example.ipynb", {"some_useful_paramer": "any_json_serializable_value"
+})
 ```
 
-Unlike `run_notebook` `run_notebook_in_process` cannot return the module as it is not transferrable across process boundaries. Its still possible to retrieve serializable state from the notebook though. Return values can be retrieved by passing the 'marshal_values' parameter. After executing the notebook, any variables in the module scope with these names will be serialized, transferred from the subprocess back to the calling process, deserialized and then returned as a python dictionary. All requested values must be pickle serializable (otherwise, their repr() will be returned).
+Unlike `run_notebook`, `run_notebook_in_process` cannot return the module as this object is not transferrable across process boundaries. Its still possible to retrieve serializable state from the notebook though. Return values can be retrieved by passing the 'marshal_values' parameter. After executing the notebook, any variables on the module scope with these names will be serialized, transferred from the subprocess back to the calling process, deserialized and then returned as a python dictionary. All requested values must be pickle serializable (otherwise, their repr() will be returned).
 
 ```python
 serialized_module_namespace = run_notebook_in_process("./example.ipynb",
-                                  {'some_parameter': "any_json_serializable_value"},
-                                  marshal_values: ["some_key_into_module_namespace_of_serializable_value"]
-                                  )
+  {'some_parameter': "any_json_serializable_value"},
+  marshal_values: ["some_key_into_module_namespace_with_serializable_value"]
+)
 ```
 
 Installation:
