@@ -48,7 +48,7 @@ another_module = run_notebook("./Example.ipynb", {
 })
 ```
 
-In this case -- the value of `a_useful_mode_switch` selects idiot mode and the notebook prints: `Hello Flat Earthers`. But how -- if the notebook is still useable interactively, then it must mean that `some_useful_parameter` needs to be defined prior to being used and this would make our externally supplied value useless (as it would be re-defined within the notebook prior to having any useful effect). `run_notebook` defines a simple convention to allow identifying which parameters of the notebook are intended to be supplied by an external caller. The convention is that `run_notebook` will only execute cells that _DO_NOT_ contain a cell metadata value like the following:
+In this case -- the value of `a_useful_mode_switch` selects idiot mode and the notebook prints: `Hello Flat Earthers`. But how -- if the notebook is still useable interactively, then it must mean that `a_useful_mode_switch` needs to be defined prior to being used and this would make our externally supplied value useless since they would be re-defined within the notebook prior to having any useful effect. `run_notebook` defines a simple convention to allow identifying which parameters of the notebook are intended to be supplied by an external caller. The convention is that `run_notebook` will only execute cells that _DO_NOT_ contain a cell metadata value like the following:
 
 ```json
     "NotebookScripter": "skip_cell"
@@ -80,7 +80,7 @@ This functionality allows 'interactive' plotting backend selection in the notebo
 
 ## Execute a notebook in isolated subprocess
 
-`run_notebook` executes notebook's within the same process as the caller. Sometimes more isolation between notebook executions is desired or requried. NotebookScripter provides a run_notebook_in_process function for this case:
+`run_notebook` executes notebook's within the same process as the caller. Sometimes more isolation between notebook executions is desired or requeried. NotebookScripter provides a run_notebook_in_process function for this case:
 
 ```python
 from NotebookScripter import run_notebook_in_process
@@ -90,7 +90,7 @@ run_notebook_in_process("./example.ipynb", {"some_useful_paramer": "any_json_ser
 })
 ```
 
-Unlike `run_notebook`, `run_notebook_in_process` cannot return the module as this object is not transferrable across process boundaries. Its still possible to retrieve serializable state from the notebook though. Return values can be retrieved by passing the 'marshal_values' parameter. After executing the notebook, any variables on the module scope with these names will be serialized, transferred from the subprocess back to the calling process, deserialized and then returned as a python dictionary. All requested values must be pickle serializable (otherwise, their repr() will be returned).
+Unlike `run_notebook`, `run_notebook_in_process` cannot return the module as Python modules are not transferrable across process boundaries. It's still possible to retrieve serializable state from the notebook though. Return values can be retrieved by passing the 'marshal_values' parameter. After executing the notebook, any variables on the module scope with these names will be serialized, transferred from the subprocess back to the calling process, deserialized and then returned as a python dictionary. All requested values must be pickle serializable (otherwise, their repr() will be returned).
 
 ```python
 serialized_module_namespace = run_notebook_in_process("./example.ipynb",

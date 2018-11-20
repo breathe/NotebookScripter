@@ -2,14 +2,22 @@ from setuptools import setup
 
 setup(
     name='NotebookScripter',
-    version='1.0.2',
+    version='1.0.4',
     packages=('NotebookScripter',),
     url='https://github.com/breathe/NotebookScripter',
     license='MIT',
     author='N. Ben Cohen',
     author_email='breathevalue@icloud.com',
-    install_requires=(),
-    tests_require=(),
+    install_requires=(
+        "ipython",
+        "nbformat"
+    ),
+    tests_require=(
+        "nose",
+        "coverage",
+        "snapshottest",
+        "matplotlib"
+    ),
     description='Expose ipython jupyter notebooks as callable functions.  More info here https://github.com/breathe/NotebookScripter',
     long_description='Expose ipython jupyter notebooks as callable functions.  More info here https://github.com/breathe/NotebookScripter',
     classifiers=(
