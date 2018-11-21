@@ -5,16 +5,17 @@ import typing
 
 from IPython import get_ipython
 from IPython.core.interactiveshell import InteractiveShell
-from IPython.terminal.embed import InteractiveShellEmbed
 from IPython.core.magic import Magics, magics_class, line_magic
 
-from traitlets import Bool, CBool, Unicode
 from traitlets.config import MultipleInstanceError
 
 from nbformat import read
 
 
 class NotebookScripterEmbeddedIpythonShell(InteractiveShell):
+
+    def enable_gui(self, gui=None):
+        pass
 
     def init_sys_modules(self):
         """Override this to create an ipython shell appropriate for embedding similar to InteractiveShellEmbed.

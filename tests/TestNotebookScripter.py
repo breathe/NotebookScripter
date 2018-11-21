@@ -10,7 +10,6 @@ class TestNotebookExecution(snapshottest.TestCase):
 
     def test_run_notebook(self):
         notebook_file = os.path.join(os.path.dirname(__file__), "./Test.ipynb")
-        globals()
         mod = NotebookScripter.run_notebook(notebook_file, with_backend='agg')
         value = mod.hello()
         print(value)
@@ -28,3 +27,9 @@ class TestNotebookExecution(snapshottest.TestCase):
         with self.assertRaises(Exception) as context:
             NotebookScripter.run_notebook(notebook_file, with_backend="somefake")
         self.assertTrue("Unrecognized backend string 'somefake'" in str(context.exception))
+
+    def test_magics_are_unregistered(self):
+        notebook_file = os.path.join(os.path.dirname(__file__), "./Test.ipynb")
+        mod = NotebookScripter.run_notebook(notebook_file, with_backend="agg")
+        shell = mod.get_ipython()
+        self.assertMatchSnapshot(shell.magics_manager.magics.get("line").get("matplotlib").__name__)
