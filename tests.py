@@ -33,12 +33,14 @@ def run_unit_tests():
          '--exe',
          '--nocapture',
          '--with-doctest',
+         '--doctest-extension',
+         '.md',
          '--doctest-options', '+NORMALIZE_WHITESPACE',
          '--with-coverage',
          '--cover-tests',
          '--cover-inclusive',
          '--cover-package', PACKAGE_DIR,
-         PACKAGE_DIR))
+         "."))
 
 
 def analyze_rst_files():

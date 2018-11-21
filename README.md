@@ -7,22 +7,36 @@
 
 This package exposes ipython jupyter notebooks as callable functions.
 
-The goal is to provide a simple way to reuse code developed/maintained in a notebook environment by turning notebooks into callable python functions with parameters optionally supplied as arguments to the function call.
+## Why
 
-Unlike a tool like nbconvert, this module allows one to continue using the notebook as an interactive development environment. With nbconvert one does a one-time conversion of a notebook into a .py file, afterwards any changes you make to that .py file are no longer usable in a notebook context. Additionally with nbconvert there is no reasonable way to directly re-use 'work flows' defined as sequences of instructions on the module scope as one would typically do in a notebook when developing a complicated process.
+A friend of mine was working on a complex analysis for her PhD thesis in an ipython jupyter notebook. She was reasonably familiar with the jupyter workflow -- which by design, tends to force you into defining parameters/state as module globals where they can be easily accessed from subsequent cells. She organized her notebook nicely, with plots and various forms of sanity checking for a complicated, hairy, and time-consuming chain of computations. Sometime near when she was finished designing the analysis, she realized she would need to run this notebook a few hundred times with different values for the parameters which she had discovered controlled the dynamics for her problem. I'm fond of typed languages and expected this would be relatively easy to refactor so I leaned in to help when I heard her groan. I quickly realized -- in fact -- no, this refactor would not be so simple.
 
-With this module, you can keep code in unmodified notebooks, continue to develop/interact with that code within notebooks, and easily trigger that notebook code from external python programs or scripting contexts.
+- Python is extremely difficult to refactor - even relatively simple mechanical transformations are essentially rewrites in terms of required debugging time
+- Code written in the workflow of jupyter notebooks tends to be even harder still to reorganize. The notebook workflow encourages you to define variables and parameters on the module scope so that you have easy access to these values from other cells. In fact -- one of the _reasons_ notebook's are convenient to use is precisely this implicit sequential chaining. The code in the notebook is linear -- things defined in later cells depend on _anything_ defined before which often makes extracting arbitrary parameters into normal code reuse units like functions a pretty major change to the logic of the notebook.
+- Normal code reuse abstractions like functions often make it _harder_ to read, reason about, and deal with your notebooks interactively. In many cases, its much simpler to write as much of your process linearly as you can -- with all the parameters in scope given values describing a single instance of the problem so that you can inspect and edit interactively at any relevant point in the process rather than hiding code inside function scopes which cannot be so readily inspected/modified interactively
+- Extracting the code from the notebook and turning it into a form that can be parameterized _loses_ the simplicity of the process description -- if she discovers when running this process with the hundreds of variations required, that some specific case needs more analysis -- its not possible to go back from the refactored code back to the simpler version that she can work with interactively to delve into the complex problem specific details.
+
+Refactoring her code to run all the problem instances for her analysis within the notebook would be error prone, make the notebook harder to interact with, and make the notebook harder to read (for a reader trying to understand the process). The benefits and conveniences of notebooks (shareability, ease of interacting with intermediate computation states) are lessened after the restructuring needed to extract a parameterizable function from a notebook intended to describe a single complicated process.
+
+This module attempts to provide a simple way to programatically execute ipython notebook's so that they can be scripted and parameterized externally.
+
+The goal is to provide a simple way to reuse code developed/maintained in a notebook environment by turning notebooks into callable python functions with parameters optionally supplied by the caller as arguments to the function call.
+
+Unlike a tool like nbconvert, this module allows one to continue using the notebook as an interactive development environment without change. With nbconvert one does a one-time conversion of a notebook into a .py file, afterwards any changes you make to that .py file are no longer usable in a notebook context. Additionally with nbconvert there is no reasonable way to directly extract re-runnable 'work flows' from the typical sequences of instructions one would interactively define on the notebook module scope.
+
+With this module, you can keep code in unmodified notebooks to handle specific instances of problems, continue to develop/interact with that code within notebooks, and easily trigger that notebook code from external python programs or scripting contexts with differerent parameters if needed.
 
 Usage:
 
-## Execute a notebook as a function call
+## How to use
 
 Suppose you have this notebook: [./Example.ipynb](./Example.ipynb)
 
-```python
-from NotebookScripter import run_notebook
+```pycon
 
-some_module = run_notebook("./Example.ipynb")
+>>> from NotebookScripter import run_notebook
+>>> some_module = run_notebook("./Example.ipynb")
+>>>
 ```
 
 The call to `run_notebook()`:
@@ -33,41 +47,33 @@ The call to `run_notebook()`:
 
 Any values or functions defined in the module scope within the notebook can be subsequently accessed:
 
-```python
-print(some_module.some_useful_value)
-some_module.hello()
+```pycon
+>>> print(some_module.some_useful_value)
+You can access this variable on the module object returned from run_notebook
+>>> some_module.hello("world")
+Hello world
+>>>
 ```
 
 This execution model matches the mental model that a developer has when working within the notebook. Importantly - the notebook code is not being imported as a python module - rather, all the code within the notebook is re-run on each call to run_notebook() just as a developer would expect when working interactively in the notebook.
 
-If desired, initial values can be injected into the namespace of the module. These values are injected into the created module namespace prior to executing any of the notebook cell's.
+If desired, values can be injected into the namespace of the notebook during notebook execution. The notebook author can annotate a cell via cell metadata (built into jupyter). The caller then can supply parameters which will be injected into the module namespace after the matching hook is executed.
 
-```python
-another_module = run_notebook("./Example.ipynb", {
-  "a_useful_mode_switch": "idiot_mode"
-})
+```pycon
+>>> another_module = run_notebook('./Example.ipynb', mode={
+...   "a_useful_mode_switch": "idiot_mode"
+... })
+Hello Flat Earthers!
+>>>
 ```
 
-In this case -- the value of `a_useful_mode_switch` selects idiot mode and the notebook prints: `Hello Flat Earthers`. But how -- if the notebook is still useable interactively, then it must mean that `a_useful_mode_switch` needs to be defined prior to being used and this would make our externally supplied value useless since they would be re-defined within the notebook prior to having any useful effect. `run_notebook` defines a simple convention to allow identifying which parameters of the notebook are intended to be supplied by an external caller. The convention is that `run_notebook` will only execute cells that _DO_NOT_ contain a cell metadata value like the following:
-
-```json
-    "NotebookScripter": "skip_cell"
-```
-
-In `Example.ipynb` This annotation is present in the cell metadata for the cell defining the `a_useful_mode_switch` variable.
-
-This annotation can be added to any cell's which you do _NOT_ want to run when the notebook is executed by NotebookScripter. The pattern for turning notebook's into parameterizable workflows thus goes as follows:
-
-1. create a cell and define default values for any parameters you want the caller to supply
-2. annotate that cell with 'skip_cell' metadata.
-
-When run interactively in the notebook, the values defined in that cell will be used for those parameters. When called externally, the caller should supply all the required values via the second argument to run_notebook.
+In this case -- the `mode` keyword parameter (that name is not chosen by NotebookScripter but rather by the cell metadata and can be anything) is defined on the cell which defines the `a_useful_mode_switch` module variable within the notebook. After that cell executes, all the values passed to run_notebook via the keyword argument with the name matching the hook are injected into the module -- thus after the cell executes, the value of the module variable `a_useful_mode_switch` will be "idiot_mode". Which later selects idiot mode and causes the notebook to print: `Hello Flat Earthers`.
 
 ## Dealing with matplotlib
 
-`run_notebook` supports a third argument `with_backend` which defaults to 'agg'. `run_notebook` intercepts any usage of `%matplotlib` ipython line magic within the notebook and replaces the argument with the value supplied by this parameter. For example:
+`run_notebook` supports an argument `with_backend` which defaults to 'agg'. `run_notebook` intercepts any usage of `%matplotlib` ipython line magic within the notebook and replaces the argument with the value supplied by this parameter. For example -- suppose you had a jupyter cell with contents like the following:
 
-```python
+```pycon
 %matplotlib inline
 
 import matplotlib.pyplot as plt
@@ -82,21 +88,21 @@ This functionality allows 'interactive' plotting backend selection in the notebo
 
 `run_notebook` executes notebook's within the same process as the caller. Sometimes more isolation between notebook executions is desired or requeried. NotebookScripter provides a run_notebook_in_process function for this case:
 
-```python
-from NotebookScripter import run_notebook_in_process
+```pycon
+>>> from NotebookScripter import run_notebook_in_process
 
-# run notebook in subprocess
-run_notebook_in_process("./example.ipynb", {"some_useful_paramer": "any_json_serializable_value"
-})
+# run notebook in subprocess -- note there is no output in doctest as output occurs in subprocess
+>>> module = run_notebook_in_process("./Example.ipynb", mode={"a_useful_mode_switch": "idiot_mode"})
+>>>
 ```
 
-Unlike `run_notebook`, `run_notebook_in_process` cannot return the module as Python modules are not transferrable across process boundaries. It's still possible to retrieve serializable state from the notebook though. Return values can be retrieved by passing the 'marshal_values' parameter. After executing the notebook, any variables on the module scope with these names will be serialized, transferred from the subprocess back to the calling process, deserialized and then returned as a python dictionary. All requested values must be pickle serializable (otherwise, their repr() will be returned).
+Unlike `run_notebook`, `run_notebook_in_process` cannot return the module as Python modules are not transferrable across process boundaries. It's still possible to retrieve serializable state from the notebook though. Return values can be retrieved by passing the 'return_values' parameter. After executing the notebook, any variables on the module scope with these names will be serialized, transferred from the subprocess back to the calling process, deserialized and then returned as a python dictionary. All requested values must be pickle serializable (otherwise, their repr() will be returned).
 
-```python
-serialized_module_namespace = run_notebook_in_process("./example.ipynb",
-  {'some_parameter': "any_json_serializable_value"},
-  marshal_values: ["some_key_into_module_namespace_with_serializable_value"]
-)
+```pycon
+>>> module = run_notebook_in_process("./Example.ipynb", mode={"a_useful_mode_switch": "non_idiot_mode"}, return_values=["some_useful_value"])
+>>> print(module.some_useful_value)
+You can access this variable on the module object returned from run_notebook
+>>>
 ```
 
 Installation:
@@ -106,6 +112,16 @@ Installation:
 ```
 
 ## Changelog
+
+### 2.0.0
+
+- Update Cell Metadata api and documentation
+- Add doctests and integrate with tests
+- Fix code coverage and code health CI integration
+
+### 1.0.5
+
+- Fix buggy behavior that occured when running from python interactive shell associated with ipython embedding api behavior
 
 ### 1.0.1
 

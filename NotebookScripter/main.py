@@ -66,8 +66,8 @@ def register_magic(shell_instance, magic_cls):
 
 def run_notebook(
         path_to_notebook: str,
-        initial_values_for_ns: typing.Dict = None,
-        with_backend='agg'
+        with_backend='agg',
+        **hooks
 ) -> typing.Any:
     """Run a notebook as a module within this processes namespace"""
 
@@ -116,23 +116,20 @@ def run_notebook(
     save_user_ns = shell.user_ns
     shell.user_ns = dynamic_module.__dict__
 
-    # inject provided values into the module namespace prior to running any cells
-    dynamic_module.__dict__.update(initial_values_for_ns or {})
-
     try:
         for cell in notebook.cells:
             # loop over the code cells
             if cell.cell_type == 'code':
-                # skip cells which contain 'skip_cell_when_run_as_script' metadata
-                if 'metadata' in cell and 'NotebookScripter' in cell.metadata and cell.metadata['NotebookScripter'] == "skip_cell":
-                    # print("Skipping cell {0}!".format(i))
-                    continue
-                else:
-                    # transform the input to executable Python
-                    code = shell.input_transformer_manager.transform_cell(
-                        cell.source)
-                    # run the code in the module
-                    exec(code, dynamic_module.__dict__)
+                # transform the input to executable Python
+                code = shell.input_transformer_manager.transform_cell(
+                    cell.source)
+                # run the code in the module
+                exec(code, dynamic_module.__dict__)
+
+                # inject caller provided values into the module namespace after execution of any hook cells
+                if 'metadata' in cell and 'NotebookScripterHookName' in cell.metadata:
+                    hook_name = cell.metadata["NotebookScripterHookName"]
+                    dynamic_module.__dict__.update(hooks.get(hook_name, {}))
     except Exception as err:
         raise err
     finally:
@@ -143,8 +140,8 @@ def run_notebook(
     return dynamic_module
 
 
-def worker(queue, path_to_notebook, initial_values_for_ns, with_backend, return_values):
-    dynamic_module = run_notebook(path_to_notebook, initial_values_for_ns=initial_values_for_ns, with_backend=with_backend)
+def worker(queue, path_to_notebook, with_backend, return_values, **hooks):
+    dynamic_module = run_notebook(path_to_notebook, with_backend=with_backend, **hooks)
 
     if return_values:
         ret = {k: simple_serialize(dynamic_module.__dict__[k]) for k in return_values if k in dynamic_module.__dict__}
@@ -163,21 +160,29 @@ def simple_serialize(obj):
 
 def run_notebook_in_process(
         path_to_notebook: str,
-        initial_values_for_ns: typing.Dict = None,
-        marshal_values=None,
-        with_backend='agg'
+        with_backend='agg',
+        return_values=None,
+        **hooks
 ) -> None:
     import multiprocessing as mp
 
     queue = mp.Queue()
 
-    p = mp.Process(target=worker, args=(queue, path_to_notebook, initial_values_for_ns, with_backend, marshal_values))
+    p = mp.Process(target=worker, args=(queue, path_to_notebook, with_backend, return_values), kwargs=hooks)
     p.start()
 
-    if not marshal_values:
+    module_identity = "loaded_notebook_from_subprocess"
+    dynamic_module = types.ModuleType(module_identity)
+    dynamic_module.__file__ = path_to_notebook
+
+    if not return_values:
         p.join()
-        return {}
+        return dynamic_module
 
     final_namespace = queue.get()
     p.join()
-    return final_namespace
+
+    # inject retrieved return values into the returned module namespace
+    dynamic_module.__dict__.update(final_namespace)
+
+    return dynamic_module
