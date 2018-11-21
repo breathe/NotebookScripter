@@ -86,7 +86,7 @@ This functionality allows 'interactive' plotting backend selection in the notebo
 
 ## Execute a notebook in isolated subprocess
 
-`run_notebook` executes notebook's within the same process as the caller. Sometimes more isolation between notebook executions is desired or requeried. NotebookScripter provides a run_notebook_in_process function for this case:
+`run_notebook` executes notebook's within the same process as the caller. Sometimes more isolation between notebook executions is desired or required. NotebookScripter provides a run_notebook_in_process function for this case:
 
 ```pycon
 >>> from NotebookScripter import run_notebook_in_process
@@ -96,7 +96,7 @@ This functionality allows 'interactive' plotting backend selection in the notebo
 >>>
 ```
 
-Unlike `run_notebook`, `run_notebook_in_process` cannot return the module as Python modules are not transferrable across process boundaries. It's still possible to retrieve serializable state from the notebook though. Return values can be retrieved by passing the 'return_values' parameter. After executing the notebook, any variables on the module scope with these names will be serialized, transferred from the subprocess back to the calling process, deserialized and then returned as a python dictionary. All requested values must be pickle serializable (otherwise, their repr() will be returned).
+Unlike `run_notebook`, `run_notebook_in_process` cannot return the module as Python modules are not transferrable across process boundaries. It's still possible to retrieve serializable state from the notebook though. Return values can be retrieved by passing the 'return_values' parameter. After executing the notebook, any variables on the module scope with these names will be serialized, transferred from the subprocess back to the calling process, deserialized, and an anonymous module with those parameters will be returned to the caller. All requested values must be pickle serializable (otherwise, their repr() will be returned).
 
 ```pycon
 >>> module = run_notebook_in_process("./Example.ipynb", mode={"a_useful_mode_switch": "non_idiot_mode"}, return_values=["some_useful_value"])
