@@ -10,6 +10,7 @@ class TestNotebookExecution(snapshottest.TestCase):
 
     def test_run_notebook(self):
         notebook_file = os.path.join(os.path.dirname(__file__), "./Test.ipynb")
+        globals()
         mod = NotebookScripter.run_notebook(notebook_file, with_backend='agg')
         value = mod.hello()
         print(value)

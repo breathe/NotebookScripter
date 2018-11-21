@@ -5,9 +5,62 @@ import typing
 
 from IPython import get_ipython
 from IPython.core.interactiveshell import InteractiveShell
+from IPython.terminal.embed import InteractiveShellEmbed
 from IPython.core.magic import Magics, magics_class, line_magic
 
+from traitlets import Bool, CBool, Unicode
+from traitlets.config import MultipleInstanceError
+
 from nbformat import read
+
+
+class NotebookScripterEmbeddedIpythonShell(InteractiveShell):
+
+    def init_sys_modules(self):
+        """Override this to create an ipython shell appropriate for embedding similar to InteractiveShellEmbed.
+
+        Needed to avoid creating new global namespace when running from command line console.
+        """
+        pass
+
+    def init_prompts(self):
+        """Override: don't mutate shell prompts.  Needed to avoid overtaking the interactive shell when this code is run from `python` command line console."""
+        # Set system prompts, so that scripts can decide if they are running
+        # interactively.
+        # sys.ps1 = 'In : '
+        # sys.ps2 = '...: '
+        # sys.ps3 = 'Out: '
+
+
+def register_magic(shell_instance, magic_cls):
+    """
+    Registers the provided shell_instance from IPython.
+
+    Returns a function which undoes this.
+
+    Rant: Why the f... does IPython not define it's own unregister function?
+
+    :param magic_cls: The Magics class you wish to register.
+    """
+
+    # ugh I hate this code and I hate python so much ...
+    undoes = {}
+    original_magics = shell_instance.magics_manager.magics
+    for magic_type, names in magic_cls.magics.items():
+        if magic_type in original_magics:
+            for magic_name, _ in names.items():
+                if magic_name in original_magics[magic_type]:
+                    undoesNamedMagics = undoes.setdefault(magic_type, {})
+                    undoesNamedMagics[magic_name] = original_magics[magic_type][magic_name]
+
+    shell_instance.register_magics(magic_cls)
+
+    def unregister_magics():
+        for magic_type, magic_names in undoes.items():
+            for magic_name, magic_value in magic_names.items():
+                shell_instance.magics_manager.magics[magic_type][magic_name] = magic_value
+
+    return unregister_magics
 
 
 def run_notebook(
@@ -17,12 +70,18 @@ def run_notebook(
 ) -> typing.Any:
     """Run a notebook as a module within this processes namespace"""
 
-    shell = InteractiveShell.instance()
+    try:
+        shell = NotebookScripterEmbeddedIpythonShell.instance()
+    except MultipleInstanceError:
+        # we are already embedded into an ipython shell -- just get that one.
+        shell = get_ipython()
+
+    unregister_magics = None
 
     if with_backend:
         try:
-            # try to initialize the matplotlib backend as early as possible
-            # (cuts down on potential for complex bugs)
+                # try to initialize the matplotlib backend as early as possible
+                # (cuts down on potential for complex bugs)
             import matplotlib
             matplotlib.use(with_backend, force=True)
         except ModuleNotFoundError:
@@ -39,7 +98,7 @@ def run_notebook(
                 import matplotlib
                 matplotlib.use(with_backend, force=True)
 
-        shell.register_magics(NotebookScripterMagics)
+        unregister_magics = register_magic(shell, NotebookScripterMagics)
 
     # load the notebook object
     with io.open(path_to_notebook, 'r', encoding='utf-8') as f:
@@ -77,6 +136,9 @@ def run_notebook(
         raise err
     finally:
         shell.user_ns = save_user_ns
+        # revert the magics changes ...
+        if unregister_magics:
+            unregister_magics()
     return dynamic_module
 
 
