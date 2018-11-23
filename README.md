@@ -44,17 +44,15 @@ Hello world
 
 The run_notebook execution model matches the mental model that a developer has when working within the notebook. Importantly - the notebook code is not being imported as a python module - rather, all the code within the notebook is re-run on each call to run_notebook() just as a developer would expect when working interactively in the notebook.
 
-If desired, values can be injected into the namespace of the notebook during notebook execution. The notebook author can annotate cells via cell metadata (built into jupyter). The caller then can supply parameters which will be injected into the module namespace after a cell with the matching hook is executed.
+If desired, values can be injected into the namespace of the notebook during notebook execution. The notebook author can define the parameter by calling `receive_parameter(some_param=some_default_value)`. If not overriden by the caller, receive_parameter will just return the provided default value otherwise the method will returned the value provided by the caller
 
 ```pycon
->>> another_module = run_notebook('./Example.ipynb', mode={
-...   "a_useful_mode_switch": "idiot_mode"
-... })
+>>> another_module = run_notebook('./Example.ipynb', a_useful_mode_switch="idiot_mode")
 Hello Flat Earthers!
 >>>
 ```
 
-In this case -- the `mode` keyword parameter (that name is not chosen by NotebookScripter but rather by the cell metadata and can be anything) is defined on the cell which defines the `a_useful_mode_switch` module variable within the notebook. After that cell executes, all the values passed to run_notebook via the keyword argument with the name matching the hook are injected into the module -- thus after the cell executes, the value of the module variable `a_useful_mode_switch` will be "idiot_mode". Which later selects idiot mode and causes the notebook to print: `Hello Flat Earthers`.
+In this call -- `a_useful_mode_switch` is passed to run_notebook as a keyword parameter which causes receive_parameter(a_useful_mode_switch=None) to return `"idiot_mode"` rather than `None`.
 
 ## Dealing with matplotlib
 
@@ -83,7 +81,7 @@ This functionality allows 'interactive' plotting backend selection in the notebo
 >>>
 ```
 
-Unlike `run_notebook`, `run_notebook_in_process` cannot return the module as Python modules are not transferrable across process boundaries. It's still possible to retrieve serializable state from the notebook though. Return values can be retrieved by passing the 'return_values' parameter. After executing the notebook, any variables on the module scope with these names will be serialized, transferred from the subprocess back to the calling process, deserialized, and an anonymous module with those parameters will be returned to the caller. All requested values must be pickle serializable (otherwise, their repr() will be returned).
+Unlike `run_notebook`, `run_notebook_in_process` cannot return the module as Python modules are not transferrable across process boundaries. It's still possible to retrieve serializable state from the notebook though. Return values can be retrieved by passing the 'return_values' parameter. After executing the notebook, variables from the module scope matching the names passed will be serialized, transferred from the subprocess back to the calling process, deserialized, and an anonymous module with those names/values will be returned to the caller. All requested values must be pickle serializable (otherwise, their repr() will be returned).
 
 ```pycon
 >>> module = run_notebook_in_process("./Example.ipynb", mode={"a_useful_mode_switch": "non_idiot_mode"}, return_values=["some_useful_value"])
@@ -105,11 +103,16 @@ Refactoring her code to run all the problem instances for her analysis within th
 
 ## Comparison to other methods
 
-Unlike a tool like nbconvert, this module allows one to continue using the notebook as an interactive development environment without change. With nbconvert one does a one-time conversion of a notebook into a .py file, afterwards any changes you make to that .py file are no longer usable in a notebook context. Additionally with nbconvert there is no reasonable way to directly extract re-runnable 'work flows' from the typical sequences of instructions one would interactively define on the notebook module scope.
+Compared to a tool like nbconvert, this module allows one to continue using the notebook as an interactive development environment without change. With nbconvert one does a one-time conversion of a notebook into a .py file, afterwards any changes you make to that .py file are no longer usable in a notebook context. Additionally with nbconvert there is no reasonable way to directly extract re-runnable 'work flows' from the typical sequences of instructions one would interactively define on the notebook module scope.
 
-With this module, you can keep code in unmodified notebooks to handle specific instances of problems, continue to develop/interact with that code within notebooks, and easily trigger that notebook code from external python programs or scripting contexts with differerent parameters if needed.
+With this module, you can keep code in unmodified notebooks tailored for interactive use on specific instances of problems, continue to develop and interact with that code within notebooks, and easily trigger that notebook code from external python programs or scripting contexts with differerent parameters if needed.
 
 ## Changelog
+
+### 3.0.0
+
+- Api changes to allow NotebookScripter to work well with vscode's
+  [jupyter features](https://blogs.msdn.microsoft.com/pythonengineering/2018/11/08/data-science-with-python-in-visual-studio-code/)
 
 ### 2.0.0
 

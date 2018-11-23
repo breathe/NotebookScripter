@@ -1,6 +1,7 @@
 
 import types
 import io
+import os
 import typing
 
 from IPython import get_ipython
@@ -9,7 +10,44 @@ from IPython.core.magic import Magics, magics_class, line_magic
 
 from traitlets.config import MultipleInstanceError
 
-from nbformat import read
+from nbformat import read as read_notebook
+
+
+# Holds values to be injected into module execution context
+__notebookscripter_injected__ = []
+
+
+def init_injected_parameters(**kwords):
+    next_injected = kwords
+    __notebookscripter_injected__.append(next_injected)
+
+
+def deinit_injected_parameters():
+    __notebookscripter_injected__.pop()
+
+
+def receive_parameter(**kwords):
+    """Receive parameters from the outside world.
+
+    Exactly 1 keyword argument is required -- the key gives the parameter a name and
+    the value provides the the 'default' value for the parameter.
+
+    The default value is returned if the parameter was not provided in the
+    call to run_notebook.
+    """
+    module_namespace = __notebookscripter_injected__[-1] if __notebookscripter_injected__ else {}
+
+    ret = []
+    for (param_name, default_value) in kwords.items():
+        if param_name in module_namespace:
+            ret.append(module_namespace[param_name])
+        else:
+            ret.append(default_value)
+
+    # can't do this because kword argument order is note preserved in some python versions ...
+    if len(kwords) > 1:
+        raise ValueError("Only 1 kword argument may be passed to receive_parameter")
+    return ret[0]
 
 
 class NotebookScripterEmbeddedIpythonShell(InteractiveShell):
@@ -81,8 +119,8 @@ def run_notebook(
 
     if with_backend:
         try:
-                # try to initialize the matplotlib backend as early as possible
-                # (cuts down on potential for complex bugs)
+            # try to initialize the matplotlib backend as early as possible
+            # (cuts down on potential for complex bugs)
             import matplotlib
             matplotlib.use(with_backend, force=True)
         except ModuleNotFoundError:
@@ -102,8 +140,6 @@ def run_notebook(
         unregister_magics = register_magic(shell, NotebookScripterMagics)
 
     # load the notebook object
-    with io.open(path_to_notebook, 'r', encoding='utf-8') as f:
-        notebook = read(f, 4)
 
     # create new module scope for notebook execution
     module_identity = "loaded_notebook"
@@ -116,27 +152,54 @@ def run_notebook(
     save_user_ns = shell.user_ns
     shell.user_ns = dynamic_module.__dict__
 
-    try:
-        for cell in notebook.cells:
-            # loop over the code cells
-            if cell.cell_type == 'code':
-                # transform the input to executable Python
-                code = shell.input_transformer_manager.transform_cell(
-                    cell.source)
-                # run the code in the module
-                exec(code, dynamic_module.__dict__)
+    init_injected_parameters(**hooks)
 
-                # inject caller provided values into the module namespace after execution of any hook cells
-                if 'metadata' in cell and 'NotebookScripterHookName' in cell.metadata:
-                    hook_name = cell.metadata["NotebookScripterHookName"]
-                    dynamic_module.__dict__.update(hooks.get(hook_name, {}))
+    _, extension = os.path.splitext(path_to_notebook)
+    if extension == ".ipynb":
+        is_ipynb = True
+    else:
+        is_ipynb = False
+
+    with io.open(path_to_notebook, 'r', encoding='utf-8') as f:
+        if is_ipynb:
+            notebook = read_notebook(f, 4)
+        else:
+            file_source = f.read()
+
+    try:
+        if is_ipynb:
+            # execute ipynb notebook files
+            for cell in notebook.cells:
+                # loop over the code cells
+                if cell.cell_type == 'code':
+                    # transform the input to executable Python
+                    code = shell.input_transformer_manager.transform_cell(
+                        cell.source)
+                    # run the code in the module
+                    exec(code, dynamic_module.__dict__)
+
+                    # # inject caller provided values into the module namespace after execution of any hook cells
+                    # if 'metadata' in cell and 'NotebookScripterHookName' in cell.metadata:
+                    #     hook_name = cell.metadata["NotebookScripterHookName"]
+                    #     dynamic_module.__dict__.update(hooks.get(hook_name, {}))
+        else:
+            # execute .py files as notebooks
+            code = shell.input_transformer_manager.transform_cell(
+                file_source)
+            # run the code in the module
+            exec(code, dynamic_module.__dict__)
     except Exception as err:
         raise err
     finally:
         shell.user_ns = save_user_ns
+
         # revert the magics changes ...
         if unregister_magics:
             unregister_magics()
+
+        # pop parameters stack
+        deinit_injected_parameters()
+
     return dynamic_module
 
 

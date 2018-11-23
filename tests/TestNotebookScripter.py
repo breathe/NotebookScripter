@@ -10,7 +10,7 @@ def filterKeys(aDict, filtered):
 
 class TestNotebookExecution(snapshottest.TestCase):
     def setUp(self):
-        self.notebook_file = os.path.join(os.path.dirname(__file__), "./Test.ipynb")
+        self.notebook_file = os.path.join(os.path.dirname(__file__), "./Samples.ipynb")
 
     def test_run_notebook(self):
         mod = NotebookScripter.run_notebook(self.notebook_file)
@@ -19,12 +19,12 @@ class TestNotebookExecution(snapshottest.TestCase):
         self.assertMatchSnapshot(value)
 
     def test_run_notebook_with_hooks1(self):
-        mod = NotebookScripter.run_notebook(self.notebook_file, configure_notebook={"parameterized_name": "external world"})
+        mod = NotebookScripter.run_notebook(self.notebook_file, parameterized_name="external world")
         value = mod.hello()
         self.assertMatchSnapshot(value)
 
     def test_run_notebook_with_hooks2(self):
-        mod = NotebookScripter.run_notebook(self.notebook_file, configure_notebook={"parameterized_name": "external world2", "french_mode": True})
+        mod = NotebookScripter.run_notebook(self.notebook_file, parameterized_name="external world2", french_mode=True)
         value = mod.hello()
         self.assertMatchSnapshot(value)
 
@@ -33,12 +33,14 @@ class TestNotebookExecution(snapshottest.TestCase):
         self.assertMatchSnapshot(filterKeys(mod.__dict__, ["__file__"]))
 
     def test_run_notebook_in_process_with_hooks(self):
-        mod = NotebookScripter.run_notebook_in_process(self.notebook_file, return_values=["parameterized_name", "french_mode"],
-                                                       configure_notebook={"parameterized_name": "external world"})
+        mod = NotebookScripter.run_notebook_in_process(self.notebook_file,
+                                                       return_values=["parameterized_name", "french_mode"],
+                                                       parameterized_name="external world")
         self.assertMatchSnapshot(filterKeys(mod.__dict__, ["__file__"]))
 
-        mod = NotebookScripter.run_notebook_in_process(self.notebook_file, return_values=["parameterized_name", "french_mode"],
-                                                       configure_notebook={"parameterized_name": "external world2", "french_mode": True})
+        mod = NotebookScripter.run_notebook_in_process(self.notebook_file,
+                                                       return_values=["parameterized_name", "french_mode"],
+                                                       parameterized_name="external world2", french_mode=True)
         self.assertMatchSnapshot(filterKeys(mod.__dict__, ["__file__"]))
 
     def test_run_with_backend_is_used(self):
@@ -50,3 +52,8 @@ class TestNotebookExecution(snapshottest.TestCase):
         mod = NotebookScripter.run_notebook(self.notebook_file)
         shell = mod.get_ipython()
         self.assertMatchSnapshot(shell.magics_manager.magics.get("line").get("matplotlib").__name__)
+
+
+class TestExecutePyFileAsNotebook(TestNotebookExecution):
+    def setUp(self):
+        self.notebook_file = os.path.join(os.path.dirname(__file__), "./Samples.pynotebook")

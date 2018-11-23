@@ -1,0 +1,44 @@
+"""
+Imported from .ipynb -- saved as .pynotebook file rather than .py to avoid breakage from
+tools (like nose-coverage) that choke when trying to import this file because of the
+get_ipython().run_line_magic call
+"""
+
+# %%
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
+from NotebookScripter import receive_parameter
+
+# define some parameters that can passed in externally when run via run_notebook
+# the value passed to receive_parameter is the default value and will be returned if not
+# overridden by notebook caller
+parameterized_name = receive_parameter(parameterized_name="default world")
+french_mode = receive_parameter(french_mode=None)
+
+
+# %%
+def hello():
+    if french_mode:
+        return "Salut {0}".format(parameterized_name)
+    return "Hello {0}".format(parameterized_name)
+
+
+# %%
+get_ipython().run_line_magic('matplotlib', 'inline')
+
+
+x = np.random.rand(20)
+y = np.random.rand(20)
+z = np.random.rand(20)
+r = np.random.rand(20)
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+ax.scatter(x, y, z, s=np.pi*r**2*100, c='blue', alpha=0.75)
+
+plt.show()
+
+
+# %%

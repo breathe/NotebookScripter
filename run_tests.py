@@ -22,7 +22,7 @@ def main(args):
 
 
 def run_static_analysis():
-    analyze_rst_files()
+    # analyze_rst_files()
     analyze_setup_py()
     # analyze_source_with_flake8()
     analyze_source_with_pylint()
@@ -30,6 +30,8 @@ def run_static_analysis():
 
 def run_unit_tests():
     run(('nosetests',
+         '--exclude',
+         'run_tests.py'
          '--exe',
          '--nocapture',
          '--with-doctest',
@@ -40,7 +42,8 @@ def run_unit_tests():
          '--cover-tests',
          '--cover-inclusive',
          '--cover-package', PACKAGE_DIR,
-         "."))
+         "."
+         ))
 
 
 def analyze_rst_files():
