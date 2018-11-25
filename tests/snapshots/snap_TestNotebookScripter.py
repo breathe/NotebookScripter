@@ -82,3 +82,7 @@ snapshots['TestNotebookExecution::test_run_notebook_in_process_with_hooks 2'] = 
 snapshots['TestNotebookExecution::test_run_notebook_with_hooks1 1'] = 'Hello external world'
 
 snapshots['TestNotebookExecution::test_run_notebook_with_hooks2 1'] = 'Salut external world2'
+
+snapshots['TestRecursiveNotebookExecution::test_run_recursive 1'] = 'Case 1 Expecting a string'
+
+snapshots['TestRecursiveNotebookExecution::test_run_recursive 2'] = 'Case 2 Expecting a string'

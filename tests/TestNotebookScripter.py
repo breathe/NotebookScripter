@@ -8,12 +8,15 @@ def filterKeys(aDict, filtered):
     return {k: v for (k, v) in aDict.items() if k not in filtered}
 
 
+# pylint: disable=E1101
+
 class TestNotebookExecution(snapshottest.TestCase):
     def setUp(self):
         self.notebook_file = os.path.join(os.path.dirname(__file__), "./Samples.ipynb")
 
     def test_run_notebook(self):
         mod = NotebookScripter.run_notebook(self.notebook_file)
+
         value = mod.hello()
         print(value)
         self.assertMatchSnapshot(value)
@@ -57,3 +60,17 @@ class TestNotebookExecution(snapshottest.TestCase):
 class TestExecutePyFileAsNotebook(TestNotebookExecution):
     def setUp(self):
         self.notebook_file = os.path.join(os.path.dirname(__file__), "./Samples.pynotebook")
+
+
+class TestRecursiveNotebookExecution(snapshottest.TestCase):
+    def setUp(self):
+        self.notebook_file = os.path.join(os.path.dirname(__file__), "./RecursiveSamples.pynotebook")
+        self.testcase1_file = os.path.join(os.path.dirname(__file__), "./RecursiveSamples_1.pynotebook")
+        self.testcase2_file = os.path.join(os.path.dirname(__file__), "./RecursiveSamples_2.pynotebook")
+
+    def test_run_recursive(self):
+
+        for testcase in [self.testcase1_file, self.testcase2_file]:
+            mod = NotebookScripter.run_notebook(self.notebook_file, parameter=testcase)
+            value = mod.value
+            self.assertMatchSnapshot(value)

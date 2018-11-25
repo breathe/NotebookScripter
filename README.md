@@ -107,6 +107,10 @@ Compared to a tool like nbconvert, this module allows one to continue using the 
 
 With this module, you can keep code in unmodified notebooks tailored for interactive use on specific instances of problems, continue to develop and interact with that code within notebooks, and easily trigger that notebook code from external python programs or scripting contexts with differerent parameters if needed.
 
+## How to Develop
+
+See [DEVELOPMENT_README.md](./DEVELOPMENT_README.MD)
+
 ## Changelog
 
 ### 3.0.0

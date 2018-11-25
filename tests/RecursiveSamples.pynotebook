@@ -1,0 +1,21 @@
+# %%
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
+from NotebookScripter import receive_parameter, run_notebook
+
+
+# %%
+"""
+Imported from .ipynb -- saved as .pynotebook file rather than .py to avoid breakage from
+tools (like nose-coverage) that choke when trying to import this file because of the
+get_ipython().run_line_magic call
+"""
+# %%
+
+# define parameter to control which notebook to execute
+notebook_name = receive_parameter(parameter=None)
+
+if notebook_name:
+    module = run_notebook(notebook_name, parameter=notebook_name)
+    value = module.value

@@ -1,14 +1,17 @@
-"""
-Imported from .ipynb -- saved as .pynotebook file rather than .py to avoid breakage from
-tools (like nose-coverage) that choke when trying to import this file because of the
-get_ipython().run_line_magic call
-"""
-
 # %%
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 from NotebookScripter import receive_parameter
+
+
+# %%
+"""
+Imported from .ipynb -- saved as .pynotebook file rather than .py to avoid breakage from
+tools (like nose-coverage) that choke when trying to import this file because of the
+get_ipython().run_line_magic call
+"""
+# %%
 
 # define some parameters that can passed in externally when run via run_notebook
 # the value passed to receive_parameter is the default value and will be returned if not

@@ -1,0 +1,7 @@
+# %%
+from NotebookScripter import receive_parameter
+
+case = "Case 1"
+parameter = receive_parameter(param="Expecting a string")
+
+value = "{0} {1}".format(case, parameter)
