@@ -90,6 +90,21 @@ You can access this variable on the module object returned from run_notebook
 >>>
 ```
 
+## Use run_notebook on notebooks imported into VSCode
+
+VSCode supports an integrated [jupyter workflow](https://blogs.msdn.microsoft.com/pythonengineering/2018/11/08/python-in-visual-studio-code-october-2018-release/).
+
+1. Install the Microsoft Python VSCode extension -- https://code.visualstudio.com/docs/languages/python
+1. Open a .ipynb file in vscode and choose to 'Import Jupyter Notebook'. This will convert the .ipynb file into a .py file by extracting the text contents of the cells.
+
+You now have your notebook represented as a text file and editable in vscode. VSCode represents the division between cells with special comment:
+`# %%`
+and can execute cells with 'Run Cell' or keybindings. You can also launch the notebook in the vscode debugger.
+
+What you can't do is reasonably reuse this imported code from another python module. You very probably designed your code to run well inside notebook's with code executing in module scope and running as a side effect of import. Rather than importing your .py module from other code what you want is a way to _invoke_ it -- which you can use `run_notebook()` to do.
+
+`run_notebook` supports .py files and executes them with the same (nearly the same) semantics as would have been used to run the equivalent code in a .ipynb file. You should also be able to use the debugger within files executed via `run_notebook`.
+
 ## Why
 
 A friend of mine was working on a complex analysis for her PhD thesis in an ipython jupyter notebook. She was reasonably familiar with the jupyter workflow -- which by design, tends to force you into defining parameters/state as module globals where they can be easily accessed from subsequent cells. She organized her notebook nicely, with plots and various forms of sanity checking for a complicated, hairy, and time-consuming chain of computations. Sometime near when she was finished designing the analysis, she realized she would need to run this notebook a few hundred times with different values for the parameters which she had discovered controlled the dynamics for her problem. I'm fond of typed languages and expected this would be relatively easy to refactor so I leaned in to help when I heard her groan. I quickly realized -- in fact -- no, this refactor would not be so simple.

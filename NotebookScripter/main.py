@@ -175,6 +175,7 @@ def run_notebook(
                     # transform the input to executable Python
                     code = shell.input_transformer_manager.transform_cell(
                         cell.source)
+
                     # run the code in the module
                     exec(code, dynamic_module.__dict__)
 
@@ -186,8 +187,11 @@ def run_notebook(
             # execute .py files as notebooks
             code = shell.input_transformer_manager.transform_cell(
                 file_source)
-            # run the code in the module
-            exec(code, dynamic_module.__dict__)
+
+            # run the code in the module, compile first to provide source mapping support
+            code_block = compile(code, path_to_notebook, 'exec')
+            exec(code_block, dynamic_module.__dict__)
+
     except Exception as err:
         raise err
     finally:
