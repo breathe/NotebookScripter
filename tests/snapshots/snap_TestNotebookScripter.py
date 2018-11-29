@@ -28,6 +28,7 @@ snapshots['TestExecutePyFileAsNotebook::test_run_notebook_in_process_with_hooks 
     '__package__': None,
     '__spec__': None,
     'french_mode': None,
+    'greeting_string': 'Hello {0}',
     'parameterized_name': 'external world'
 }
 
@@ -38,6 +39,7 @@ snapshots['TestExecutePyFileAsNotebook::test_run_notebook_in_process_with_hooks 
     '__package__': None,
     '__spec__': None,
     'french_mode': True,
+    'greeting_string': 'Salut {0}',
     'parameterized_name': 'external world2'
 }
 
@@ -59,6 +61,20 @@ snapshots['TestNotebookExecution::test_run_notebook_in_process 1'] = {
     'parameterized_name': 'default world'
 }
 
+snapshots['TestNotebookExecution::test_run_notebook_with_hooks1 1'] = 'Hello external world'
+
+snapshots['TestNotebookExecution::test_run_notebook_with_hooks2 1'] = 'Salut external world2'
+
+snapshots['TestRecursiveNotebookExecution::test_run_recursive 1'] = 'Case 1 Expecting a string'
+
+snapshots['TestRecursiveNotebookExecution::test_run_recursive 2'] = 'Case 2 Expecting a string'
+
+snapshots['TestWorkerExecution::test_worker 1'] = {
+    'french_mode': None,
+    'greeting_string': 'Hello {0}',
+    'parameterized_name': 'external world'
+}
+
 snapshots['TestNotebookExecution::test_run_notebook_in_process_with_hooks 1'] = {
     '__doc__': None,
     '__loader__': None,
@@ -66,6 +82,7 @@ snapshots['TestNotebookExecution::test_run_notebook_in_process_with_hooks 1'] = 
     '__package__': None,
     '__spec__': None,
     'french_mode': None,
+    'greeting_string': 'Hello {0}',
     'parameterized_name': 'external world'
 }
 
@@ -76,13 +93,6 @@ snapshots['TestNotebookExecution::test_run_notebook_in_process_with_hooks 2'] = 
     '__package__': None,
     '__spec__': None,
     'french_mode': True,
+    'greeting_string': 'Salut {0}',
     'parameterized_name': 'external world2'
 }
-
-snapshots['TestNotebookExecution::test_run_notebook_with_hooks1 1'] = 'Hello external world'
-
-snapshots['TestNotebookExecution::test_run_notebook_with_hooks2 1'] = 'Salut external world2'
-
-snapshots['TestRecursiveNotebookExecution::test_run_recursive 1'] = 'Case 1 Expecting a string'
-
-snapshots['TestRecursiveNotebookExecution::test_run_recursive 2'] = 'Case 2 Expecting a string'

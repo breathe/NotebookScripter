@@ -4,13 +4,6 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 from NotebookScripter import receive_parameter
 
-
-# %%
-"""
-Imported from .ipynb -- saved as .pynotebook file rather than .py to avoid breakage from
-tools (like nose-coverage) that choke when trying to import this file because of the
-get_ipython().run_line_magic call
-"""
 # %%
 
 # define some parameters that can passed in externally when run via run_notebook
@@ -20,11 +13,16 @@ parameterized_name = receive_parameter(parameterized_name="default world")
 french_mode = receive_parameter(french_mode=None)
 
 
+if french_mode:
+    greeting_string = "Salut {0}"
+else:
+    greeting_string = "Hello {0}"
+
 # %%
+
+
 def hello():
-    if french_mode:
-        return "Salut {0}".format(parameterized_name)
-    return "Hello {0}".format(parameterized_name)
+    return greeting_string.format(parameterized_name)
 
 
 # %%

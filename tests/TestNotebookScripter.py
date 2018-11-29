@@ -2,6 +2,7 @@ import os
 import snapshottest
 
 import NotebookScripter
+from NotebookScripter.main import worker
 
 
 def filterKeys(aDict, filtered):
@@ -36,13 +37,14 @@ class TestNotebookExecution(snapshottest.TestCase):
         self.assertMatchSnapshot(filterKeys(mod.__dict__, ["__file__"]))
 
     def test_run_notebook_in_process_with_hooks(self):
+        return_values = ["parameterized_name", "french_mode", "greeting_string"]
         mod = NotebookScripter.run_notebook_in_process(self.notebook_file,
-                                                       return_values=["parameterized_name", "french_mode"],
+                                                       return_values=return_values,
                                                        parameterized_name="external world")
         self.assertMatchSnapshot(filterKeys(mod.__dict__, ["__file__"]))
 
         mod = NotebookScripter.run_notebook_in_process(self.notebook_file,
-                                                       return_values=["parameterized_name", "french_mode"],
+                                                       return_values=return_values,
                                                        parameterized_name="external world2", french_mode=True)
         self.assertMatchSnapshot(filterKeys(mod.__dict__, ["__file__"]))
 
@@ -55,6 +57,30 @@ class TestNotebookExecution(snapshottest.TestCase):
         mod = NotebookScripter.run_notebook(self.notebook_file)
         shell = mod.get_ipython()
         self.assertMatchSnapshot(shell.magics_manager.magics.get("line").get("matplotlib").__name__)
+
+
+class TestWorkerExecution(snapshottest.TestCase):
+    def setUp(self):
+        self.notebook_file = os.path.join(os.path.dirname(__file__), "./Samples.ipynb")
+
+    def test_worker(self):
+        class FakeQueue(object):
+            def __init__(self):
+                self._items = []
+
+            def put(self, item):
+                self._items.append(item)
+
+        queue = FakeQueue()
+        notebook = self.notebook_file
+        with_backend = "agg"
+        return_values = ["parameterized_name", "french_mode", "greeting_string"]
+        hooks = {"parameterized_name": "external world"}
+
+        worker(queue, notebook, with_backend, return_values, **hooks)
+        mod = queue._items[0]
+
+        self.assertMatchSnapshot(mod)
 
 
 class TestExecutePyFileAsNotebook(TestNotebookExecution):

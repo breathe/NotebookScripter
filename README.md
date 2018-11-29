@@ -42,9 +42,9 @@ Hello world
 >>>
 ```
 
-The run_notebook execution model matches the mental model that a developer has when working within the notebook. Importantly - the notebook code is not being imported as a python module - rather, all the code within the notebook is re-run on each call to run_notebook() just as a developer would expect when working interactively in the notebook.
+The `run_notebook` execution model matches the mental model that a developer has when working within the notebook. Importantly - the notebook code is _not_ imported as a python module - rather, all the code within the notebook is re-run on each call to run_notebook() just as a developer would expect when working interactively in the notebook.
 
-If desired, values can be injected into the namespace of the notebook during notebook execution. The notebook author can define the parameter by calling `receive_parameter(some_param=some_default_value)`. If not overriden by the caller, receive_parameter will just return the provided default value otherwise the method will returned the value provided by the caller
+If desired, values can be injected into the notebook for use during notebook execution by passing keyword arguments to `run_notebook`.
 
 ```pycon
 >>> another_module = run_notebook('./Example.ipynb', a_useful_mode_switch="idiot_mode")
@@ -52,11 +52,19 @@ Hello Flat Earthers!
 >>>
 ```
 
+Within the notebook, use the `NotebookScripter.receive_parameter` parameter to receive parameters from the outside world.
+
+```python
+a_useful_mode_switch = receive_parameter(a_useful_mode_switch=None)
+```
+
 In this call -- `a_useful_mode_switch` is passed to run_notebook as a keyword parameter which causes receive_parameter(a_useful_mode_switch=None) to return `"idiot_mode"` rather than `None`.
+
+`receive_parameter` requires a single keyword argument. If a matching keyword argument was supplied to run_notebook then that value is returned from `receive_parameter()` otherwise the provided value is returned. This api ensures all parameters have default values allowing the notebook to be used interactively or with parameters supplied externally.
 
 ## Dealing with matplotlib
 
-`run_notebook` supports an argument `with_backend` which defaults to 'agg'. `run_notebook` intercepts any usage of `%matplotlib` ipython line magic within the notebook and replaces the argument with the value supplied by this parameter. For example -- suppose you had a jupyter cell with contents like the following:
+`run_notebook` supports an argument `with_backend` which defaults to 'agg'. `run_notebook` registers its own handler for `%matplotlib` ipython line magic which replaces the argument in the cell with the value supplied to run_notebook. For example -- suppose you had a jupyter cell with contents like the following:
 
 ```pycon
 %matplotlib inline
@@ -97,7 +105,7 @@ VSCode supports an integrated [jupyter workflow](https://blogs.msdn.microsoft.co
 1. Install the Microsoft Python VSCode extension -- https://code.visualstudio.com/docs/languages/python
 1. Open a .ipynb file in vscode and choose to 'Import Jupyter Notebook'. This will convert the .ipynb file into a .py file by extracting the text contents of the cells.
 
-You now have your notebook represented as a text file and editable in vscode. VSCode represents the division between cells with special comment:
+You now have your notebook represented as a text file which is editable in vscode. VSCode represents the division between cells with special comment:
 `# %%`
 and can execute cells with 'Run Cell' or keybindings. You can also launch the notebook in the vscode debugger.
 
@@ -107,24 +115,26 @@ What you can't do is reasonably reuse this imported code from another python mod
 
 ## Why
 
-A friend of mine was working on a complex analysis for her PhD thesis in an ipython jupyter notebook. She was reasonably familiar with the jupyter workflow -- which by design, tends to force you into defining parameters/state as module globals where they can be easily accessed from subsequent cells. She organized her notebook nicely, with plots and various forms of sanity checking for a complicated, hairy, and time-consuming chain of computations. Sometime near when she was finished designing the analysis, she realized she would need to run this notebook a few hundred times with different values for the parameters which she had discovered controlled the dynamics for her problem. I'm fond of typed languages and expected this would be relatively easy to refactor so I leaned in to help when I heard her groan. I quickly realized -- in fact -- no, this refactor would not be so simple.
+A friend of mine was working on a complex analysis for her PhD thesis in an ipython jupyter notebook. She was reasonably familiar with the jupyter workflow -- which by design, tends to force you into defining parameters/state as module globals where they can be easily accessed from subsequent cells. She organized her notebook nicely, with plots and various forms of sanity checking for a complicated and hairy chain of computations that took a long time to run. Sometime near when she was finished designing the analysis, she realized she would need to run this notebook a few hundred times with different values for the parameters which she had discovered controlled the dynamics for her problem. I'm fond of typed languages and expected this would be relatively easy to refactor so I leaned in to help when I heard her groan. I quickly realized -- in fact -- no, this refactor would not be so simple.
 
 - Python is extremely difficult to refactor - even relatively simple mechanical transformations are essentially rewrites in terms of required debugging time
 - Code written in the workflow of jupyter notebooks tends to be even harder still to reorganize. The notebook workflow encourages you to define variables and parameters on the module scope so that you have easy access to these values from other cells. In fact -- one of the _reasons_ notebook's are convenient to use is precisely this implicit sequential chaining. The code in the notebook is linear -- things defined in later cells depend on _anything_ defined before which often makes extracting arbitrary parameters into normal code reuse units like functions a pretty major change to the logic of the notebook.
 - Normal code reuse abstractions like functions often make it _harder_ to read, reason about, and deal with your notebooks interactively. In many cases, its much simpler to write as much of your process linearly as you can -- with all the parameters in scope given values describing a single instance of the problem so that you can inspect and edit interactively at any relevant point in the process rather than hiding code inside function scopes which cannot be so readily inspected/modified interactively
-- Extracting the code from the notebook and turning it into a form that can be parameterized _loses_ the simplicity of the process description -- if she discovers when running this process with the hundreds of variations required, that some specific case needs more analysis -- its not possible to go back from the refactored code back to the simpler version that she can work with interactively to delve into the complex problem specific details.
+- Extracting the code from the notebook and turning it into a form that allows normal parameterization _loses_ some of the simplicity of the original process description. If she discovers after refactoring her code an unexpected issue that occurs when processing one of the hundreds of variations of parameters -- its not going to be possible to go back and investigate with her process and all the intermediate computation states -- she will have been forced to rewrite her code in a way that makes it hard or impossible to take advantage of the interactive computing model.
 
-Refactoring her code to run all the problem instances for her analysis within the notebook would be error prone, make the notebook harder to interact with, and make the notebook harder to read (for a reader trying to understand the process). The benefits and conveniences of notebooks (shareability, ease of interacting with intermediate computation states) are lessened after the restructuring needed to extract a parameterizable function from a notebook intended to describe a single complicated process.
+Refactoring her code to run all the problem instances for her analysis within the notebook would be error prone, make the notebook harder to interact with, and make the notebook harder to read by a reader trying later to understand the process. This kind of refactoring reduces the benefits and conveniences of notebooks (ease of interacting with intermediate computation states, code-as-documentation) vs the single-long-linear process description style more suitable for interactive development.
 
 ## Comparison to other methods
 
-Compared to a tool like nbconvert, this module allows one to continue using the notebook as an interactive development environment without change. With nbconvert one does a one-time conversion of a notebook into a .py file, afterwards any changes you make to that .py file are no longer usable in a notebook context. Additionally with nbconvert there is no reasonable way to directly extract re-runnable 'work flows' from the typical sequences of instructions one would interactively define on the notebook module scope.
+_nbconvert_ - allows one to do a one-time conversion from .ipynb format to a .py file. It does the work of extracting code from the .ipynb format. This is useful but doesn't directly extract re-runnable 'work flows' from the typical sequences of instructions one would interactively define on the notebook module scope. Typically one would have to change the code output by nbconvert to make use of it in a script or program -- and those chnages would turn that code into a form that was less useable for interactive development.
 
-With this module, you can keep code in unmodified notebooks tailored for interactive use on specific instances of problems, continue to develop and interact with that code within notebooks, and easily trigger that notebook code from external python programs or scripting contexts with differerent parameters if needed.
+_vscode's vscode-python_ - performs a conversion to a .py like nbconvert and then also provides a jupyter notebook like development flow on top of raw .py files with various advantages over the .ipynb format (editors, revision control). The VSCode plugin _also_ allows you to re-export your .py output back to .ipynb files for convenient sharing/publishing. The functionality provided by vscode-python is great -- but similar to _nbconvert_ code imported from a notebook is likely to need a lot of change before it can be re-used -- and the changes required are very likely to make the code _no longer_ work well with a notebook development mindset.
+
+_NotebookScripter_ allows one to directly invoke notebook code from scripts and applications without having to extensively change the way the code is written. You can keep code in a form that is tailored for interactive use within a notebook, continue to develop and interact with that code with a notebook workflow and easily invoke that notebook from python programs or scripting contexts with externally provided parameters if needed. Notebook files themsevles can be encoded as either jupyter .ipynb files or as vscode-python or nbconvert style .py files.
 
 ## How to Develop
 
-See [DEVELOPMENT_README.md](./DEVELOPMENT_README.MD)
+See [DEVELOPMENT_README.md](DEVELOPMENT_README.md)
 
 ## Changelog
 

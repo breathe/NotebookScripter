@@ -5,9 +5,9 @@
 ```shell
 git clone https://github.com/breathe/NotebookScripter
 # create conda env
-conda create -n nbs-test --file conda_dev.yml
+conda create -n nbs-dev --file conda_dev.yml
 # activate it
-source activate nbs-test
+source activate nbs-dev
 # run tests
 nosetests
 # or run linting, doctests, nosetests with coverage
