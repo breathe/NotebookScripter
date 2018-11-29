@@ -85,14 +85,14 @@ This functionality allows 'interactive' plotting backend selection in the notebo
 >>> from NotebookScripter import run_notebook_in_process
 
 # run notebook in subprocess -- note there is no output in doctest as output occurs in subprocess
->>> module = run_notebook_in_process("./Example.ipynb", mode={"a_useful_mode_switch": "idiot_mode"})
+>>> module = run_notebook_in_process("./Example.ipynb", a_useful_mode_switch="idiot_mode")
 >>>
 ```
 
 Unlike `run_notebook`, `run_notebook_in_process` cannot return the module as Python modules are not transferrable across process boundaries. It's still possible to retrieve serializable state from the notebook though. Return values can be retrieved by passing the 'return_values' parameter. After executing the notebook, variables from the module scope matching the names passed will be serialized, transferred from the subprocess back to the calling process, deserialized, and an anonymous module with those names/values will be returned to the caller. All requested values must be pickle serializable (otherwise, their repr() will be returned).
 
 ```pycon
->>> module = run_notebook_in_process("./Example.ipynb", mode={"a_useful_mode_switch": "non_idiot_mode"}, return_values=["some_useful_value"])
+>>> module = run_notebook_in_process("./Example.ipynb", return_values=["some_useful_value"], a_useful_mode_switch="non_idiot_mode")
 >>> print(module.some_useful_value)
 You can access this variable on the module object returned from run_notebook
 >>>
