@@ -74,12 +74,14 @@ class TestWorkerExecution(snapshottest.TestCase):
         queue = FakeQueue()
         notebook = self.notebook_file
         with_backend = "agg"
-        return_values = ["parameterized_name", "french_mode", "greeting_string"]
+        return_values = ["parameterized_name", "french_mode", "greeting_string", "hello"]
         hooks = {"parameterized_name": "external world"}
 
         worker(queue, notebook, with_backend, return_values, **hooks)
         mod = queue._items[0]
 
+        hello_repr = mod.pop("hello", None)
+        self.assertTrue("function" in hello_repr)
         self.assertMatchSnapshot(mod)
 
 
