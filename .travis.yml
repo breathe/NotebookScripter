@@ -1,15 +1,25 @@
+env:
+  global:
+    - secure: IdqEArwpiD8WbH4D+lxFoeyspcoqgX6Spu4Pg0JTmwwR29Y4WLbmKbBit5lu8NU1JlgpGDiClU6iKsN0WBd2tDy7e4xrV4k8uXKS7UksCkP4/g7CVeOTQB4dwHIosbMNbRZf3w7kkXicSUf5ILNSb1E9YQi8MQHNMA3OmO76iNCXzjs7UidOjCcXxJQ04aMoW7HKMhcsHnUgIZlS0qmwmHjRViDkB23G+h3baWBl9pWkvGMwHh681lmIYwwWQpLfGxsQLYfu0VEG6sfyFhiWyW0337Ak8kOpA7gmf9YGv+RD6TJO8gx974JzAF6HXoijb1mzMK7k3oe+AMwQDutcWzE/zN+LFIhY9n+FhMXSTh5hVQjgVuSUCqBIMQSSRiIRv82lcA8fOAagw4Cc8Z4JwWypkp5pqx/1ZXJdGxmjQBTbh5aN3rHlvQNRqaRFUckJT7TtzMnWY9oL2cvli1MdLJaEeIlJPehJyNsOwOi//H7ROmwAPc88cQKzfK0CGrPtvbWouIBQdjjHigZ8g2h8ekkBiX+iMbunhNazv1VDsB9ZgWU8pnwt4Rt9vBmDHp2AQc35n4z4yj0a4F2G6f8qejEmiXpUggvHkAictqiNyMvKvMaTSELIJvAJHcXYrGBd6R49LYnRoISjClNOJuIUMAblAr9k+ZxNlGd7zrlPcMI=
+    - secure: VKP7z65a3fJilGDWIcU0jDHqAS22mafpkjPoWLyC1VNEftqeFSdEuay87BLjEj3HHUFaCfb4LnIVMF/3ZffK/jrYBH6nsvXqaq3/GGLPB2L7wSQd00tcRlivXZAd8Mv82OikzpBGI0duhPmV6zLxXbOaG7CLGpAIIJFdZcEua1DdfehppTASDp3Vmo9ul+/q13Nx63nJ20p34Jf9wpoEHRwDHx0UyNmoIoXXRiKrVWastRucSMb9L7E8UTYHpr97iVlNlaawVMv/oBXqGiFbN8aV39FeZpdCoXW1VH+5CYzecOfsJEGdVm9FtE1Z9EpNAfGd9AkngZs2D+edH+4NM2GZIYcUAuXCjyKb7JTakH7rgnP3CmWLY2kzgQTjUbOhA/eD5OJenGdENkxR0mN0vaw+EqEP/0GJDyEHz3rmcyfgCGpHyIJgBze3QUCWgFNqG7M6FO2kwVKsid4igXgHnP2Ls0RJA6VGHH3noHgeKZFqx9ssWNPlrA/MegfhCMwUsH74aFBOQaKXNO1uA4znJxgaAf+UBWKkM8YPzCzWmNZk5x1ZjoDplCNqGfK6ui6BBLWwwEH2Lslz3fNMsyv9qgd03O+qkUcWkuMOKkWP5svrcZE4DbmoqxnjunwiXVmFNeb9E31vin4h/dVzeyWsCZtLztzgSMNGWCpMAUhyKI4=
 language: python
 matrix:
   include:
-  - python: 3.6
-    env:
-    - TOXENV=py36
+    - python: 3.6
+      env:
+        - TOXENV=py36
 install:
-- pip install tox coveralls
+  - pip install tox coveralls
+before_script:
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - chmod +x ./cc-test-reporter
+  - "./cc-test-reporter before-build"
 script:
-- tox
+  - tox
 after_success:
-- coveralls
+  - coveralls
+  - coverage xml
+  - "./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT"
 deploy:
   provider: pypi
   user: breatheoften
