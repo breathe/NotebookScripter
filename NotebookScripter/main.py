@@ -191,9 +191,6 @@ def run_notebook(
             # run the code in the module, compile first to provide source mapping support
             code_block = compile(code, path_to_notebook, 'exec')
             exec(code_block, dynamic_module.__dict__)
-
-    except Exception as err:
-        raise err
     finally:
         shell.user_ns = save_user_ns
 
