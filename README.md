@@ -138,6 +138,14 @@ See [DEVELOPMENT_README.md](DEVELOPMENT_README.md)
 
 ## Changelog
 
+### 3.1.3
+
+- Minor changes to boost test coverage %
+
+### 3.1.0
+
+- Support debugger when invoking .py files via run_notebook()
+
 ### 3.0.0
 
 - Api changes to allow NotebookScripter to work well with vscode's

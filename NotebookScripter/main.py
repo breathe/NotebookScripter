@@ -13,7 +13,7 @@ from traitlets.config import MultipleInstanceError
 from nbformat import read as read_notebook
 
 
-# Holds values to be injected into module execution context
+# Holds values to be injected into module execution context via receive_parameter
 __notebookscripter_injected__ = []
 
 
