@@ -4,6 +4,7 @@
 
 ```shell
 git clone https://github.com/breathe/NotebookScripter
+cd NotebookScripter
 # create conda env
 conda create -n nbs-dev --file conda_dev.yml
 # activate it
@@ -18,6 +19,7 @@ python run_tests.py
 
 ```shell
 git clone https://github.com/breathe/NotebookScripter
+cd NotebookScripter
 docker-compose build ; docker-compose up
 ```
 
@@ -25,6 +27,7 @@ docker-compose build ; docker-compose up
 
 ```shell
 git clone https://github.com/breathe/NotebookScripter
+cd NotebookScripter
 # create pip-visible python environment using your preferred tool ...
 pip install -r requirements_static_analysis.txt -r requirements_test_runner.txt -r requirements.txt
 # run nose tests
