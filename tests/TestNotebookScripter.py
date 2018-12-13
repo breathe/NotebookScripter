@@ -74,10 +74,11 @@ class TestWorkerExecution(snapshottest.TestCase):
         queue = FakeQueue()
         notebook = self.notebook_file
         with_backend = "agg"
+        search_parents = False
         return_values = ["parameterized_name", "french_mode", "greeting_string", "hello"]
         hooks = {"parameterized_name": "external world"}
 
-        worker(queue, notebook, with_backend, return_values, **hooks)
+        worker(queue, notebook, with_backend, search_parents, return_values, **hooks)
         mod = queue._items[0]
 
         hello_repr = mod.pop("hello", None)
@@ -96,9 +97,26 @@ class TestRecursiveNotebookExecution(snapshottest.TestCase):
         self.testcase1_file = os.path.join(os.path.dirname(__file__), "./RecursiveSamples_1.pynotebook")
         self.testcase2_file = os.path.join(os.path.dirname(__file__), "./RecursiveSamples_2.pynotebook")
 
-    def test_run_recursive(self):
+    def test_run(self):
 
         for testcase in [self.testcase1_file, self.testcase2_file]:
             mod = NotebookScripter.run_notebook(self.notebook_file, parameter=testcase)
             value = mod.value
             self.assertMatchSnapshot(value)
+
+
+class TestSearchParents(snapshottest.TestCase):
+    """Test search_parents option"""
+
+    def setUp(self):
+        self.notebook_file = os.path.join(os.path.dirname(__file__), "./SearchParents_1.pynotebook")
+
+    def test_run_recursive(self):
+        mod = NotebookScripter.run_notebook(self.notebook_file, a="grandparent_a")
+        value = mod.value
+        self.assertMatchSnapshot(value)
+
+    def test_run_in_subprocess_recursive(self):
+        mod = NotebookScripter.run_notebook_in_process(self.notebook_file, return_values=["value"], a="grandparent_a")
+        value = mod.value
+        self.assertMatchSnapshot(value)

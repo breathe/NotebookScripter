@@ -77,6 +77,36 @@ When executed via run_notebook(..., with_backend='agg') - the line `%matplotlib 
 
 This functionality supports 'interactive' plotting backend selection in the notebook environment and 'non-interactive' backend selection in the scripting context. 'agg' is a non-interactive backend built into most distributions of matplotlib. To disable this functionality provide `with_backend=None`.
 
+## Other options
+
+If desired - the parameter search_parents=True can be passed to run_notebook/run_notebook_in_process.
+
+Example:
+
+```python
+run_notebook("./parent.py", grandparent="grandparent")
+```
+
+parent.py
+
+```python
+from NotebookScripter import run_notebook
+run_notebook("child.py", search_parents=True)
+```
+
+child.py
+
+```python
+from NotebookScripter import receive_parameter
+param = receive_parameter(grandparent=None)
+
+print("Printed value will be "grandparent" rather than None: {0}".format(grandparent))
+```
+
+receive_parameter found the value for 'grandparent' passed to the ancestor call to run_notebook despite the fact that the call in parent.py passed no parameters.
+
+_Implementation Note_: Keyword parameters passed to run_notebook are stored in a stack. When search_parents is False, receive_parameter searches only the top frame of the parameters stack for matching variables. When search_parents is True then when a match isn't found on the top frame, parent frames are searched in order for matches with the default value returned when none of the stack's contain a matching value. The search_parents behavior depends only on the run_notebook() caller -- it is not inherited or itself influenced by any grandparent/child run_notebook invocations.
+
 ## Execute a notebook in isolated subprocess
 
 `run_notebook` executes notebook's within the same process as the caller. Sometimes more isolation between notebook executions is desired or required. NotebookScripter provides a run_notebook_in_process function for this case:
@@ -137,6 +167,10 @@ _NotebookScripter_ allows one to directly invoke notebook code from scripts and 
 See [DEVELOPMENT_README.md](DEVELOPMENT_README.md)
 
 ## Changelog
+
+### 3.2.0
+
+- Add search_parents option to run_notebook and run_notebook_in_process (defaults to False)
 
 ### 3.1.3
 

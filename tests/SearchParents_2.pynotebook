@@ -1,0 +1,6 @@
+from NotebookScripter import receive_parameter
+
+a = receive_parameter(a="grandchild_a")
+b = receive_parameter(b="grandchild_b")
+
+value = [a, b]

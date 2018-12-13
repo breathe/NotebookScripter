@@ -61,20 +61,6 @@ snapshots['TestNotebookExecution::test_run_notebook_in_process 1'] = {
     'parameterized_name': 'default world'
 }
 
-snapshots['TestNotebookExecution::test_run_notebook_with_hooks1 1'] = 'Hello external world'
-
-snapshots['TestNotebookExecution::test_run_notebook_with_hooks2 1'] = 'Salut external world2'
-
-snapshots['TestRecursiveNotebookExecution::test_run_recursive 1'] = 'Case 1 Expecting a string'
-
-snapshots['TestRecursiveNotebookExecution::test_run_recursive 2'] = 'Case 2 Expecting a string'
-
-snapshots['TestWorkerExecution::test_worker 1'] = {
-    'french_mode': None,
-    'greeting_string': 'Hello {0}',
-    'parameterized_name': 'external world'
-}
-
 snapshots['TestNotebookExecution::test_run_notebook_in_process_with_hooks 1'] = {
     '__doc__': None,
     '__loader__': None,
@@ -96,3 +82,51 @@ snapshots['TestNotebookExecution::test_run_notebook_in_process_with_hooks 2'] = 
     'greeting_string': 'Salut {0}',
     'parameterized_name': 'external world2'
 }
+
+snapshots['TestNotebookExecution::test_run_notebook_with_hooks1 1'] = 'Hello external world'
+
+snapshots['TestNotebookExecution::test_run_notebook_with_hooks2 1'] = 'Salut external world2'
+
+snapshots['TestRecursiveNotebookExecution::test_run 1'] = 'Case 1 Expecting a string'
+
+snapshots['TestRecursiveNotebookExecution::test_run 2'] = 'Case 2 Expecting a string'
+
+snapshots['TestSearchParents::test_run_recursive 1'] = [
+    [
+        'grandparent_a',
+        [
+            'grandchild_a',
+            'parent_b'
+        ]
+    ],
+    [
+        'grandparent_a',
+        [
+            'grandparent_a',
+            'parent_b'
+        ]
+    ]
+]
+
+snapshots['TestWorkerExecution::test_worker 1'] = {
+    'french_mode': None,
+    'greeting_string': 'Hello {0}',
+    'parameterized_name': 'external world'
+}
+
+snapshots['TestSearchParents::test_run_in_subprocess_recursive 1'] = [
+    [
+        'grandparent_a',
+        [
+            'grandchild_a',
+            'parent_b'
+        ]
+    ],
+    [
+        'grandparent_a',
+        [
+            'grandparent_a',
+            'parent_b'
+        ]
+    ]
+]
