@@ -2,6 +2,8 @@
 import types
 import io
 import os
+import sys
+import traceback
 import typing
 
 from IPython import get_ipython
@@ -124,7 +126,7 @@ def run_notebook(
 
     Args:
         path_to_notebook: Path to .ipynb or .py file containing notebook code
-        with_backend: Override behavior of ipython's matplotlib 'magic directive' -- "% matplotlib inline" 
+        with_backend: Override behavior of ipython's matplotlib 'magic directive' -- "% matplotlib inline"
         search_parents: receive_parameter() calls within the called notebook will search for parameters pass to any 'parent' invocations of run_notebook on the call stack, not just for parameters passed to this call
     Returns:
         Returns newly created (anonymous) python module in which the target code was executed.
@@ -225,12 +227,28 @@ def run_notebook(
     return dynamic_module
 
 
-def worker(queue, path_to_notebook, with_backend, search_parents, return_values, **hooks):
-    dynamic_module = run_notebook(path_to_notebook, with_backend=with_backend, search_parents=search_parents, **hooks)
+class NotebookScripterWrappedException(Exception):
+    def __init__(self):
+        exc_type, exc_value, exc_tb = sys.exc_info()
+        self.exception = exc_value
+        self.formatted = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
 
-    if return_values:
-        ret = {k: simple_serialize(dynamic_module.__dict__[k]) for k in return_values if k in dynamic_module.__dict__}
-        queue.put(ret)
+    def __str__(self):
+        return '%s\nOriginal traceback:\n%s' % (Exception.__str__(self), self.formatted)
+
+
+def worker(queue, path_to_notebook, with_backend, search_parents, return_values, **hooks):
+    try:
+        dynamic_module = run_notebook(path_to_notebook, with_backend=with_backend, search_parents=search_parents, **hooks)
+
+        if return_values:
+            ret = {k: simple_serialize(dynamic_module.__dict__[k]) for k in return_values if k in dynamic_module.__dict__}
+            queue.put((None, ret))
+        else:
+            queue.put((None, {}))
+    except Exception:
+        wrapped_exception = NotebookScripterWrappedException()
+        queue.put((wrapped_exception, None))
 
 
 def simple_serialize(obj):
@@ -254,11 +272,11 @@ def run_notebook_in_process(
 
     Args:
         path_to_notebook: Path to .ipynb or .py file containing notebook code
-        with_backend: Override behavior of ipython's matplotlib 'magic directive' -- "% matplotlib inline" 
+        with_backend: Override behavior of ipython's matplotlib 'magic directive' -- "% matplotlib inline"
         search_parents: receive_parameter() calls within the called notebook will search for parameters pass to any 'parent' invocations of run_notebook on the call stack, not just for parameters passed to this call
         return_values: Optional array of strings to pass back from subprocess -- values matching these names in the module created by invoking the notebook in a subprocess will be serialized passed across process boundaries back to this process, deserialized and made part of the returned module
     Returns:
-        Returns newly created (anonymous) python module 
+        Returns newly created (anonymous) python module
         populated with requested values retrieved from the subprocess
     """
     import multiprocessing as mp
@@ -272,12 +290,11 @@ def run_notebook_in_process(
     dynamic_module = types.ModuleType(module_identity)
     dynamic_module.__file__ = path_to_notebook
 
-    if not return_values:
-        p.join()
-        return dynamic_module
-
-    final_namespace = queue.get()
+    err, final_namespace = queue.get()
     p.join()
+
+    if err:
+        raise err
 
     # inject retrieved return values into the returned module namespace
     dynamic_module.__dict__.update(final_namespace)

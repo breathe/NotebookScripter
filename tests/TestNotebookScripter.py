@@ -79,7 +79,7 @@ class TestWorkerExecution(snapshottest.TestCase):
         hooks = {"parameterized_name": "external world"}
 
         worker(queue, notebook, with_backend, search_parents, return_values, **hooks)
-        mod = queue._items[0]
+        err, mod = queue._items[0]
 
         hello_repr = mod.pop("hello", None)
         self.assertTrue("function" in hello_repr)
@@ -120,3 +120,16 @@ class TestSearchParents(snapshottest.TestCase):
         mod = NotebookScripter.run_notebook_in_process(self.notebook_file, return_values=["value"], a="grandparent_a")
         value = mod.value
         self.assertMatchSnapshot(value)
+
+
+class TestSearchParents(snapshottest.TestCase):
+    """Test search_parents option"""
+
+    def setUp(self):
+        self.notebook_file = os.path.join(os.path.dirname(__file__), "./TestException.pynotebook")
+
+    def test_run_with_exception(self):
+        self.assertRaises(AssertionError, NotebookScripter.run_notebook, self.notebook_file)
+
+    def test_run_in_subprocess_with_exception(self):
+        self.assertRaises(NotebookScripter.NotebookScripterWrappedException, NotebookScripter.run_notebook_in_process, self.notebook_file)
