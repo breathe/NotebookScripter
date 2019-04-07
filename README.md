@@ -168,6 +168,10 @@ See [DEVELOPMENT_README.md](DEVELOPMENT_README.md)
 
 ## Changelog
 
+### 4.0.1
+
+- Fix error in setup.py's notion of package version.
+
 ### 4.0.0
 
 - Change error handling of run_notebook_in_process -- exception's raised in subprocess will be reraised in caller (wrapped inside a NotebookScripterWrappedException)

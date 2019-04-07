@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='NotebookScripter',
-    version='3.2.1',
+    version='4.0.1',
     packages=('NotebookScripter',),
     url='https://github.com/breathe/NotebookScripter',
     license='MIT',
