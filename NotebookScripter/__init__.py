@@ -1,1 +1,1 @@
-from .main import run_notebook, run_notebook_in_process, receive_parameter, NotebookScripterWrappedException
+from .main import run_notebook, run_notebook_in_process, receive_parameter, NotebookScripterWrappedException, set_notebook_option

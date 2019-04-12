@@ -4,6 +4,8 @@ import snapshottest
 import NotebookScripter
 from NotebookScripter.main import worker
 
+from unittest.mock import patch
+
 
 def filterKeys(aDict, filtered):
     return {k: v for (k, v) in aDict.items() if k not in filtered}
@@ -33,24 +35,23 @@ class TestNotebookExecution(snapshottest.TestCase):
         self.assertMatchSnapshot(value)
 
     def test_run_notebook_in_process(self):
-        mod = NotebookScripter.run_notebook_in_process(self.notebook_file, return_values=["parameterized_name", "french_mode"])
+        mod = NotebookScripter.run_notebook_in_process(self.notebook_file)("parameterized_name", "french_mode")
         self.assertMatchSnapshot(filterKeys(mod.__dict__, ["__file__"]))
 
     def test_run_notebook_in_process_with_hooks(self):
         return_values = ["parameterized_name", "french_mode", "greeting_string"]
-        mod = NotebookScripter.run_notebook_in_process(self.notebook_file,
-                                                       return_values=return_values,
-                                                       parameterized_name="external world")
+        mod = NotebookScripter.run_notebook_in_process(self.notebook_file, parameterized_name="external world")(*return_values)
         self.assertMatchSnapshot(filterKeys(mod.__dict__, ["__file__"]))
 
-        mod = NotebookScripter.run_notebook_in_process(self.notebook_file,
-                                                       return_values=return_values,
-                                                       parameterized_name="external world2", french_mode=True)
+        mod = NotebookScripter.run_notebook_in_process(self.notebook_file, parameterized_name="external world2", french_mode=True)(*return_values)
         self.assertMatchSnapshot(filterKeys(mod.__dict__, ["__file__"]))
 
     def test_run_with_backend_is_used(self):
         with self.assertRaises(Exception) as context:
-            NotebookScripter.run_notebook(self.notebook_file, with_backend="somefake")
+            with patch('NotebookScripter.main.__notebookscripter_injected__', [[{}, {}]]):
+                NotebookScripter.set_notebook_option(with_matplotlib_backend="somefake")
+                NotebookScripter.run_notebook(self.notebook_file)
+        print(str(context.exception))
         self.assertTrue("Unrecognized backend string 'somefake'" in str(context.exception))
 
     def test_magics_are_unregistered(self):
@@ -64,6 +65,8 @@ class TestWorkerExecution(snapshottest.TestCase):
         self.notebook_file = os.path.join(os.path.dirname(__file__), "./Samples.ipynb")
 
     def test_worker(self):
+        return_values = ["parameterized_name", "french_mode", "greeting_string", "hello"]
+
         class FakeQueue(object):
             def __init__(self):
                 self._items = []
@@ -71,15 +74,17 @@ class TestWorkerExecution(snapshottest.TestCase):
             def put(self, item):
                 self._items.append(item)
 
-        queue = FakeQueue()
+            def get(self):
+                return return_values
+
+        parent_to_child_queue = FakeQueue()
+        child_to_parent_queue = FakeQueue()
         notebook = self.notebook_file
-        with_backend = "agg"
-        search_parents = False
-        return_values = ["parameterized_name", "french_mode", "greeting_string", "hello"]
+        parent_parameters = [[{}, {}]]
         hooks = {"parameterized_name": "external world"}
 
-        worker(queue, notebook, with_backend, search_parents, return_values, **hooks)
-        err, mod = queue._items[0]
+        worker(parent_to_child_queue, child_to_parent_queue, notebook, parent_parameters, **hooks)
+        err, mod = child_to_parent_queue._items[0]
 
         hello_repr = mod.pop("hello", None)
         self.assertTrue("function" in hello_repr)
@@ -112,17 +117,13 @@ class TestSearchParents(snapshottest.TestCase):
         self.notebook_file = os.path.join(os.path.dirname(__file__), "./SearchParents_1.pynotebook")
 
     def test_run_recursive(self):
-        mod = NotebookScripter.run_notebook(self.notebook_file, a="grandparent_a")
-        value = mod.value
-        self.assertMatchSnapshot(value)
+        NotebookScripter.run_notebook(self.notebook_file, a="grandparent_a")
 
     def test_run_in_subprocess_recursive(self):
-        mod = NotebookScripter.run_notebook_in_process(self.notebook_file, return_values=["value"], a="grandparent_a")
-        value = mod.value
-        self.assertMatchSnapshot(value)
+        NotebookScripter.run_notebook_in_process(self.notebook_file, a="grandparent_a")()
 
 
-class TestSearchParents(snapshottest.TestCase):
+class TestException(snapshottest.TestCase):
     """Test search_parents option"""
 
     def setUp(self):
@@ -132,4 +133,5 @@ class TestSearchParents(snapshottest.TestCase):
         self.assertRaises(AssertionError, NotebookScripter.run_notebook, self.notebook_file)
 
     def test_run_in_subprocess_with_exception(self):
-        self.assertRaises(NotebookScripter.NotebookScripterWrappedException, NotebookScripter.run_notebook_in_process, self.notebook_file)
+        run_in_process = NotebookScripter.run_notebook_in_process(self.notebook_file)
+        self.assertRaises(NotebookScripter.NotebookScripterWrappedException, run_in_process)

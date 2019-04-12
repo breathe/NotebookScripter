@@ -16,15 +16,62 @@ from nbformat import read as read_notebook
 
 
 # Holds values to be injected into module execution context via receive_parameter
-__notebookscripter_injected__ = []
+__notebookscripter_injected__ = [[{}, {}]]
 
 
-def init_injected_parameters(injected_parameters, run_settings):
-    __notebookscripter_injected__.append([injected_parameters, run_settings])
+def __init_injected_parameters(injected_parameters):
+    global __notebookscripter_injected__
+    __notebookscripter_injected__ += [[injected_parameters, {}]]
 
 
 def deinit_injected_parameters():
     __notebookscripter_injected__.pop()
+
+
+def set_notebook_option(
+    **kwords
+):
+    """
+    Customize run_notebook behavior.  Parameters:
+
+    with_matplotlib_backend: Override behavior of ipython's matplotlib 'magic directive' -- by default reinterprets "%matplotlib inline" as "%matplotlib agg" -- set to None to disable
+
+    """
+    valid_parameters = ["with_matplotlib_backend"]
+    for key, value in kwords.items():
+        if key not in valid_parameters:
+            raise ValueError(f"Unknown notebook configuration parameter: {key} -- valid parameters {','.join(valid_parameters)}")
+        elif key == "with_matplotlib_backend":
+            __notebookscripter_injected__[-1][1][key] = value
+
+
+def __receive_option(**kwords):
+    """Receive configuration options.
+
+    Exactly 1 keyword argument is required -- the key gives the option a name and
+    the value provides the the 'default' value for the parameter.
+
+    The default value is returned if the parameter was not provided in a call to set_notebook_option
+    """
+
+    if len(kwords) != 1:
+        raise ValueError("Exactly 1 kword argument must be passed to receive_option")
+
+    namespaces_to_search = [i for _, i in __notebookscripter_injected__]
+    ret = []
+
+    # search the namespaces in reverse order
+    param_name, default_value = next(iter(kwords.items()))
+    for module_namespace in reversed(namespaces_to_search):
+        if param_name in module_namespace:
+            ret.append(module_namespace[param_name])
+
+    # search space did not contain item -- use default value
+    if not ret:
+        ret.append(default_value)
+
+    # return the found item
+    return ret[0]
 
 
 def receive_parameter(**kwords):
@@ -41,13 +88,7 @@ def receive_parameter(**kwords):
     if len(kwords) != 1:
         raise ValueError("Exactly 1 kword argument must be passed to receive_parameter")
 
-    last_parameter_namespace, options_namespace = __notebookscripter_injected__[-1] if __notebookscripter_injected__ else [{}, {}]
-
-    if options_namespace.get("search_parents", None):
-        namespaces_to_search = [i for i, _ in __notebookscripter_injected__]
-    else:
-        namespaces_to_search = [last_parameter_namespace]
-
+    namespaces_to_search = [i for i, _ in __notebookscripter_injected__]
     ret = []
 
     # search the namespaces in reverse order
@@ -118,16 +159,12 @@ def register_magic(shell_instance, magic_cls):
 
 def run_notebook(
         path_to_notebook: str,
-        with_backend='agg',
-        search_parents: bool = False,
         **hooks
 ) -> typing.Any:
     """Run a notebook within calling process
 
     Args:
         path_to_notebook: Path to .ipynb or .py file containing notebook code
-        with_backend: Override behavior of ipython's matplotlib 'magic directive' -- "% matplotlib inline"
-        search_parents: receive_parameter() calls within the called notebook will search for parameters pass to any 'parent' invocations of run_notebook on the call stack, not just for parameters passed to this call
     Returns:
         Returns newly created (anonymous) python module in which the target code was executed.
     """
@@ -138,6 +175,8 @@ def run_notebook(
         shell = get_ipython()
 
     unregister_magics = None
+
+    with_backend = __receive_option(with_matplotlib_backend="agg")
 
     if with_backend:
         try:
@@ -174,9 +213,7 @@ def run_notebook(
     save_user_ns = shell.user_ns
     shell.user_ns = dynamic_module.__dict__
 
-    init_injected_parameters(hooks, {
-        "search_parents": search_parents
-    })
+    __init_injected_parameters(hooks)
 
     _, extension = os.path.splitext(path_to_notebook)
     if extension == ".ipynb":
@@ -237,18 +274,29 @@ class NotebookScripterWrappedException(Exception):
         return '%s\nOriginal traceback:\n%s' % (Exception.__str__(self), self.formatted)
 
 
-def worker(queue, path_to_notebook, with_backend, search_parents, return_values, **hooks):
+def worker(parent_to_child_queue, child_to_parent_queue, path_to_notebook, all_parent_parameters, **hooks):
     try:
-        dynamic_module = run_notebook(path_to_notebook, with_backend=with_backend, search_parents=search_parents, **hooks)
+        global __notebookscripter_injected__
+        # at this point we are in a new spawned -- and __notebook_scripter_injected__ is equal to [{}, {}]
+        # update it to hold the value passed in from the calling process
+        __notebookscripter_injected__ = all_parent_parameters
+
+        # then run the notebook
+        dynamic_module = run_notebook(path_to_notebook, **hooks)
+
+        # now get the return values requested by the caller from the module, serialize them, then pass them back to the calling process
+        return_values = parent_to_child_queue.get()
 
         if return_values:
             ret = {k: simple_serialize(dynamic_module.__dict__[k]) for k in return_values if k in dynamic_module.__dict__}
-            queue.put((None, ret))
+            child_to_parent_queue.put((None, ret))
         else:
-            queue.put((None, {}))
+            child_to_parent_queue.put((None, {}))
     except Exception:
+        # if an exception occurred -- wrap it up and pass it back to the calling process
         wrapped_exception = NotebookScripterWrappedException()
-        queue.put((wrapped_exception, None))
+        child_to_parent_queue.put((wrapped_exception, None))
+    # worker subprocess done -- if join() is called in parent process when this process's thread of execution has gotten here it will not block
 
 
 def simple_serialize(obj):
@@ -263,40 +311,55 @@ def simple_serialize(obj):
 
 def run_notebook_in_process(
     path_to_notebook: str,
-    with_backend='agg',
-    search_parents=False,
-    return_values=None,
     **hooks
 ) -> None:
-    """Run a notebook in a new subprocess
+    """Asynchronously Run a notebook in a new subprocess.
+
+    Returns a closure which when called will block until the execution has completed.  
+
+    Arguments passed to the closure will retrieve values from the subprocess and package them in an (anonymous) python module with the requested values retrieved from the exrecuted subprocess
 
     Args:
         path_to_notebook: Path to .ipynb or .py file containing notebook code
-        with_backend: Override behavior of ipython's matplotlib 'magic directive' -- "% matplotlib inline"
-        search_parents: receive_parameter() calls within the called notebook will search for parameters pass to any 'parent' invocations of run_notebook on the call stack, not just for parameters passed to this call
-        return_values: Optional array of strings to pass back from subprocess -- values matching these names in the module created by invoking the notebook in a subprocess will be serialized passed across process boundaries back to this process, deserialized and made part of the returned module
     Returns:
-        Returns newly created (anonymous) python module
+        Returns a closure which will block until the notebook execution completes then return a newly created (anonymous) python module
         populated with requested values retrieved from the subprocess
     """
+
     import multiprocessing as mp
 
-    queue = mp.Queue()
+    context = mp.get_context("spawn")
+    child_to_parent_queue = context.Queue()
+    parent_to_child_queue = context.Queue()
 
-    p = mp.Process(target=worker, args=(queue, path_to_notebook, with_backend, search_parents, return_values), kwargs=hooks)
+    p = context.Process(target=worker, args=(parent_to_child_queue, child_to_parent_queue, path_to_notebook, __notebookscripter_injected__), kwargs=hooks)
     p.start()
 
-    module_identity = "loaded_notebook_from_subprocess"
-    dynamic_module = types.ModuleType(module_identity)
-    dynamic_module.__file__ = path_to_notebook
+    def _block_and_receive_results(*return_values):
+        """
+        Block until the notebook execution has completed.  Then retrieve return_values from the subprocess's module scope and return 
+        the newly created (anonymous) python module populated with the requested values retrieved from the subprocess
 
-    err, final_namespace = queue.get()
-    p.join()
 
-    if err:
-        raise err
+        Args:
+            return_values: Optional list of strings to pass back from subprocess -- values matching these names in the module created by invoking the notebook in a subprocess will be serialized passed across process boundaries back to this process, deserialized and made part of the returned module
+        """
 
-    # inject retrieved return values into the returned module namespace
-    dynamic_module.__dict__.update(final_namespace)
+        parent_to_child_queue.put(return_values)
 
-    return dynamic_module
+        module_identity = "loaded_notebook_from_subprocess"
+        dynamic_module = types.ModuleType(module_identity)
+        dynamic_module.__file__ = path_to_notebook
+
+        err, final_namespace = child_to_parent_queue.get()
+        p.join()
+
+        if err:
+            raise err
+
+        # inject retrieved return values into the returned module namespace
+        dynamic_module.__dict__.update(final_namespace)
+
+        return dynamic_module
+
+    return _block_and_receive_results

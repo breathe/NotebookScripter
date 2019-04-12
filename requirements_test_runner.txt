@@ -1,5 +1,6 @@
 jupyter
-nose
+pytest
+pytest-cov
 coverage
 snapshottest
 matplotlib

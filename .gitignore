@@ -1,3 +1,5 @@
+.pytest_cache
+.coverage.*
 .noseids
 .vscode
 .ipynb_checkpoints

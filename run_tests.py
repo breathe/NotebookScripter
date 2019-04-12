@@ -29,21 +29,17 @@ def run_static_analysis():
 
 
 def run_unit_tests():
-    run(('nosetests',
-         '--exclude',
-         'run_tests.py'
-         '--exe',
-         '--nocapture',
-         '--with-doctest',
-         '--doctest-extension',
-         '.md',
-         '--doctest-options', '+NORMALIZE_WHITESPACE',
-         '--with-coverage',
-         '--cover-tests',
-         '--cover-inclusive',
-         '--cover-package', PACKAGE_DIR,
-         "."
-         ))
+    run((
+        "pytest",
+        "-v",
+        "--doctest-glob",
+        "*.md",
+        "--cov",
+        "NotebookScripter",
+        "--cov",
+        "tests",
+        "--cov-report=xml"
+    ))
 
 
 def analyze_rst_files():

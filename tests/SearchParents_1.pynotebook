@@ -2,17 +2,9 @@
 import os
 from NotebookScripter import run_notebook, receive_parameter
 
-my_a = receive_parameter(a="parent_a")
+my_a = receive_parameter(a="should_be_overridden")
+
+assert my_a != "should_be_overridden"
 
 notebook_file = os.path.join(os.path.dirname(__file__), "SearchParents_2.pynotebook")
 child_mod = run_notebook(notebook_file, b="parent_b")
-
-# test this
-without_search_parents = [my_a, child_mod.value]
-
-child_mod = run_notebook(notebook_file, search_parents=True, b="parent_b")
-
-# should be different
-with_search_parents = [my_a, child_mod.value]
-
-value = [without_search_parents, with_search_parents]

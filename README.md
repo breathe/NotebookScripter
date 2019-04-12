@@ -20,7 +20,6 @@ The goal is to provide a simple way to reuse code developed/maintained in a note
 Suppose you have this notebook: [./Example.ipynb](./Example.ipynb). You can use the `NotebookScripter.run_notebook` method to execute it.
 
 ```pycon
-
 >>> from NotebookScripter import run_notebook
 >>> some_module = run_notebook("./Example.ipynb")
 >>>
@@ -36,7 +35,7 @@ Values or functions defined in the module scope within the notebook can be subse
 
 ```pycon
 >>> print(some_module.some_useful_value)
-You can access this variable on the module object returned from run_notebook
+You can access this variable on the module object returned
 >>> some_module.hello("world")
 Hello world
 >>>
@@ -64,7 +63,7 @@ In this call -- `a_useful_mode_switch="idiot_mode"` is passed to run_notebook as
 
 ## Dealing with matplotlib
 
-`run_notebook` supports an argument `with_backend` which defaults to 'agg'. `run_notebook` registers its own handler for `%matplotlib` ipython line magic which replaces the argument in the cell with the value supplied to run_notebook. For example -- suppose you had a jupyter cell with contents like the following:
+`run_notebook` supports an configuration option `with_matplotlib_backend` which defaults to 'agg'. `run_notebook` registers its own handler based on this option for `%matplotlib` ipython line magic -- this handler replaces the argument supplied in the cell with the value configured by NotebookScripter. For example -- suppose you had a jupyter cell with contents like the following:
 
 ```pycon
 %matplotlib inline
@@ -73,17 +72,20 @@ import matplotlib.pyplot as plt
 # ...<some script that also produces plots>...
 ```
 
-When executed via run_notebook(..., with_backend='agg') - the line `%matplotlib inline` will instead be interpreted like `%matplotlib agg`.
+When executed via run_notebook(...) - the line `%matplotlib inline` will instead be interpreted like `%matplotlib agg`.
 
-This functionality supports 'interactive' plotting backend selection in the notebook environment and 'non-interactive' backend selection in the scripting context. 'agg' is a non-interactive backend built into most distributions of matplotlib. To disable this functionality provide `with_backend=None`.
+This functionality supports 'interactive' plotting backend selection in the notebook environment and 'non-interactive' backend selection in the scripting context. 'agg' is a non-interactive backend built into most distributions of matplotlib.
 
-## Other options
+You can change the backend selection used by NotebookScripter by calling `NotebookScripter.set_notebook_option(with_matplotlib_backend="somebackend")` To disable this functionality entirely provide `with_matplotlib_backend=None`.
 
-If desired - the parameter search_parents=True can be passed to run_notebook/run_notebook_in_process.
+## Recursive run_notebook execution
+
+When run_notebook is invoked recursively, receive_parameter() will locate parameters by searching up the logical stack parameters passed to run_notebook invocations until it finds a match.
 
 Example:
 
 ```python
+from NotebookScripter import run_notebook
 run_notebook("./parent.py", grandparent="grandparent")
 ```
 
@@ -91,7 +93,7 @@ parent.py
 
 ```python
 from NotebookScripter import run_notebook
-run_notebook("child.py", search_parents=True)
+run_notebook("child.py")
 ```
 
 child.py
@@ -103,9 +105,7 @@ param = receive_parameter(grandparent=None)
 print("Printed value will be "grandparent" rather than None: {0}".format(grandparent))
 ```
 
-receive_parameter found the value for 'grandparent' passed to the ancestor call to run_notebook despite the fact that the call in parent.py passed no parameters.
-
-_Implementation Note_: Keyword parameters passed to run_notebook are stored in a stack. When search_parents is False, receive_parameter searches only the top frame of the parameters stack for matching variables. When search_parents is True then when a match isn't found on the top frame, parent frames are searched in order for matches with the default value returned when none of the stack's contain a matching value. The search_parents behavior depends only on the run_notebook() caller -- it is not inherited or itself influenced by any grandparent/child run_notebook invocations.
+receive_parameter found the value for 'grandparent' that was passed to the ancestor call to run_notebook despite the fact that the `run_notebook` call in parent.py passed no parameters.
 
 ## Execute a notebook in isolated subprocess
 
@@ -115,16 +115,16 @@ _Implementation Note_: Keyword parameters passed to run_notebook are stored in a
 >>> from NotebookScripter import run_notebook_in_process
 
 # run notebook in subprocess -- note there is no output in doctest as output occurs in subprocess
->>> module = run_notebook_in_process("./Example.ipynb", a_useful_mode_switch="idiot_mode")
+>>> module = run_notebook_in_process("./Example.ipynb", a_useful_mode_switch="idiot_mode")()
 >>>
 ```
 
-Unlike `run_notebook`, `run_notebook_in_process` cannot return the module as Python modules are not transferrable across process boundaries. It's still possible to retrieve serializable state from the notebook though. Return values can be retrieved by passing the 'return_values' parameter. After executing the notebook, variables from the module scope matching the names passed will be serialized, transferred from the subprocess back to the calling process, deserialized, and an anonymous module with those names/values will be returned to the caller. All requested values must be pickle serializable (otherwise, their repr() will be returned).
+`run_notebook_in_process` executes the notebook asynchronously in another process and returns a callable function. When called the returned function will block until the notebook execution completes and a similar anonymous module will be returned to the caller as with `run_notebook`. Unlike `run_notebook` however, `run_notebook_in_process` cannot return the entire underlying module as Python modules are not transferrable across process boundaries. It's still possible to retrieve serializable state from the child process though. Return values can be retrieved by passing the string's to the callable method returned from run_notebook_in_process. Variables from the module scope matching the names passed will be serialized, transferred from the subprocess back to the calling process, deserialized, and included in the anonymous module. All requested values must be pickle serializable (otherwise, their repr() will be returned).
 
 ```pycon
->>> module = run_notebook_in_process("./Example.ipynb", return_values=["some_useful_value"], a_useful_mode_switch="non_idiot_mode")
+>>> module = run_notebook_in_process("./Example.ipynb", a_useful_mode_switch="non_idiot_mode")("some_useful_value")
 >>> print(module.some_useful_value)
-You can access this variable on the module object returned from run_notebook
+You can access this variable on the module object returned
 >>>
 ```
 
@@ -167,6 +167,41 @@ _NotebookScripter_ allows one to directly invoke notebook code from scripts and 
 See [DEVELOPMENT_README.md](DEVELOPMENT_README.md)
 
 ## Changelog
+
+### 5.0.0
+
+- API Change: Remove search_parents option -- the new behavior (corresponding to search_parents=True) is now the only behavior
+- API Change: remove `with_backend` parameter from run_notebook and replace with `set_notebook_option()` api
+
+  ```
+  NotebookScripter.set_notebook_option(with_matplotlib_backend="some_backend")
+  ```
+
+- Use `spawn` when creating a subprocess within `run_notebook_in_process` rather than the default which is to fork on unix and spawn on windows. This provides better cross-platform compatibility, improves isolation between subprocess executions, and allows for better debugger behavior.
+
+- API Change: new api for `run_notebook_in_process`:
+
+  - run_notebook_in_process now runs the notebook in a subprocess asynchronously and returns a closure which when called will block until the notebook execution completes
+  - the `return_values` parameter is removed from run_notebook_in_process and moved onto the callable
+  - to convert from old api to new:
+
+    old
+
+    ```python
+    run_notebook_in_process(some_file, return_values=['some_param1', 'some_param2'], some_argument='foo')
+    ```
+
+    can be directly rewritten as
+
+    ```python
+    run_notebook_in_process(some_file, some_argument='foo')('some_param1', 'some_param2')
+    ```
+
+    or like this with argument splatting
+
+    ```python
+    run_notebook_in_process(some_file, some_argument='foo')(*['some_param1', 'some_param2'])
+    ```
 
 ### 4.0.1
 
