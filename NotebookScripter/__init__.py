@@ -1,1 +1,1 @@
-from .main import run_notebook, run_notebook_in_process, receive_parameter, NotebookScripterWrappedException, set_notebook_option
+from ._main import run_notebook, run_notebook_in_process, run_notebook_in_jupyter, receive_parameter, NotebookScripterWrappedException, set_notebook_option, rehydrate, dehydrate_return_values

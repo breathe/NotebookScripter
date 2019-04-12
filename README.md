@@ -128,6 +128,30 @@ You can access this variable on the module object returned
 >>>
 ```
 
+## Execute a notebook in a jupyter kernel and (optionally) generate a notebook with populated output cells
+
+`run_notebook_in_jupyter` will launch a jupyter ipython kernel making it possible to render an .ipynb file with populated output cells.
+
+```pycon
+>>> from NotebookScripter import run_notebook_in_jupyter
+>>> module = run_notebook_in_jupyter("./Example.ipynb", a_useful_mode_switch="non_idiot_mode")("some_useful_value")
+>>> print(module.some_useful_value)
+You can access this variable on the module object returned
+>>>
+```
+
+In addition to \*args, the closure returned from `run_notebook_in_jupyter` also accepts an optional parameter `save_notebook_output` which is a file to which the rendered notebook should be written. Parameters passed to `run_notebook_in_jupyter` are included in the output notebook so that the notebook can be investigated/re-executed with the provided parameters.
+
+```python
+# output_notebook.ipynb will be a notebook file along with the rendered output cells
+module = run_notebook_in_jupyter("./Example.ipynb", a_useful_mode_switch="non_idiot_mode")("some_useful_value", save_notebook_output="output_notebook.ipynb")
+
+# this also works to convert a .py file into a notebook
+module = run_notebook_in_jupyter("./Example.py", a_useful_mode_switch="non_idiot_mode")("some_useful_value", save_notebook_output="output_notebook.ipynb")
+```
+
+NOTE: unlike run_notebook and run_notebook_in_process -- it is not currently possible to use the debugger/set breakpoints on code executed by run_notebook_in_jupyter.
+
 ## Use run_notebook on notebooks imported into VSCode
 
 VSCode supports an integrated [jupyter workflow](https://blogs.msdn.microsoft.com/pythonengineering/2018/11/08/python-in-visual-studio-code-october-2018-release/).
@@ -167,6 +191,10 @@ _NotebookScripter_ allows one to directly invoke notebook code from scripts and 
 See [DEVELOPMENT_README.md](DEVELOPMENT_README.md)
 
 ## Changelog
+
+### 5.1.0
+
+- Add new method: run_notebook_in_jupyter. Runs
 
 ### 5.0.0
 

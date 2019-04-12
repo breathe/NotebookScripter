@@ -1,3 +1,6 @@
+# %% [markdown]
+# HELLO *FROM MARKDOWN*
+
 # %%
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -34,12 +37,12 @@ y = np.random.rand(20)
 z = np.random.rand(20)
 r = np.random.rand(20)
 
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
+# fig = plt.figure()
+# ax = fig.add_subplot(111, projection='3d')
 
-ax.scatter(x, y, z, s=np.pi*r**2*100, c='blue', alpha=0.75)
+# ax.scatter(x, y, z, s=np.pi * r**2 * 100, c='blue', alpha=0.75)
 
-plt.show()
+# plt.show()
 
 
 # %%

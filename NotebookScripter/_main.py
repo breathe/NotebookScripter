@@ -5,6 +5,8 @@ import os
 import sys
 import traceback
 import typing
+import pickle
+import codecs
 
 from IPython import get_ipython
 from IPython.core.interactiveshell import InteractiveShell
@@ -15,16 +17,16 @@ from traitlets.config import MultipleInstanceError
 from nbformat import read as read_notebook
 
 
-# Holds values to be injected into module execution context via receive_parameter
+# Holds values to be injected into module execution context via receive_parameter/__receive_options
 __notebookscripter_injected__ = [[{}, {}]]
 
 
-def __init_injected_parameters(injected_parameters):
+def __add_parameter_frame(injected_parameters):
     global __notebookscripter_injected__
     __notebookscripter_injected__ += [[injected_parameters, {}]]
 
 
-def deinit_injected_parameters():
+def __pop_parameter_frame():
     __notebookscripter_injected__.pop()
 
 
@@ -213,7 +215,7 @@ def run_notebook(
     save_user_ns = shell.user_ns
     shell.user_ns = dynamic_module.__dict__
 
-    __init_injected_parameters(hooks)
+    __add_parameter_frame(hooks)
 
     _, extension = os.path.splitext(path_to_notebook)
     if extension == ".ipynb":
@@ -259,7 +261,7 @@ def run_notebook(
             unregister_magics()
 
         # pop parameters stack
-        deinit_injected_parameters()
+        __pop_parameter_frame()
 
     return dynamic_module
 
@@ -288,7 +290,7 @@ def worker(parent_to_child_queue, child_to_parent_queue, path_to_notebook, all_p
         return_values = parent_to_child_queue.get()
 
         if return_values:
-            ret = {k: simple_serialize(dynamic_module.__dict__[k]) for k in return_values if k in dynamic_module.__dict__}
+            ret = serialize_return_values(dynamic_module.__dict__, return_values)
             child_to_parent_queue.put((None, ret))
         else:
             child_to_parent_queue.put((None, {}))
@@ -299,8 +301,33 @@ def worker(parent_to_child_queue, child_to_parent_queue, path_to_notebook, all_p
     # worker subprocess done -- if join() is called in parent process when this process's thread of execution has gotten here it will not block
 
 
+def rehydrate(string_like):
+    obj = str_to_obj(string_like)
+    global __notebookscripter_injected__
+    __notebookscripter_injected__ = obj
+
+
+def dehydrate_return_values(namespace):
+    names = __notebookscripter_injected__[-1][1].get("return_values", [])
+    return obj_to_string_literal(serialize_return_values(namespace, names))
+
+
+def obj_to_string_literal(obj):
+    return codecs.encode(pickle.dumps(obj), "hex").strip()
+
+
+def str_to_obj(str_value):
+    return pickle.loads(codecs.decode(str_value, "hex"))
+
+
+def serialize_return_values(namespace, names, to_string=False):
+    obj = {k: simple_serialize(namespace[k]) for k in names if k in namespace}
+    if to_string:
+        obj = obj_to_string_literal(obj)
+    return obj
+
+
 def simple_serialize(obj):
-    import pickle
     try:
         pickle.dumps(obj)
         # if we didn't raise, then (theoretically) obj should be serializable ...
@@ -315,7 +342,7 @@ def run_notebook_in_process(
 ) -> None:
     """Asynchronously Run a notebook in a new subprocess.
 
-    Returns a closure which when called will block until the execution has completed.  
+    Returns a closure which when called will block until the execution has completed.
 
     Arguments passed to the closure will retrieve values from the subprocess and package them in an (anonymous) python module with the requested values retrieved from the exrecuted subprocess
 
@@ -337,7 +364,7 @@ def run_notebook_in_process(
 
     def _block_and_receive_results(*return_values):
         """
-        Block until the notebook execution has completed.  Then retrieve return_values from the subprocess's module scope and return 
+        Block until the notebook execution has completed.  Then retrieve return_values from the subprocess's module scope and return
         the newly created (anonymous) python module populated with the requested values retrieved from the subprocess
 
 
@@ -362,4 +389,95 @@ def run_notebook_in_process(
 
         return dynamic_module
 
+    return _block_and_receive_results
+
+
+def run_notebook_in_jupyter(path_to_notebook: str,
+                            **hooks
+                            ) -> None:
+    """Run a notebook via a jupyter ipython kernel 
+
+    Returns a closure which when called will block until the execution has completed.
+
+    *args Arguments passed to the closure will retrieve values from the executed kernel and package them in an (anonymous) python module with the requested values retrieved from the exrecuted subprocess.  
+    The closure also accepts a save_output_notebook parameter which is none by default -- if provided it should be a file path where the executed notebook with computed output cells will be written.
+
+    Args:
+        path_to_notebook: Path to .ipynb or .py file containing notebook code
+    Returns:
+        Returns a closure which will block until the notebook execution completes then return a newly created (anonymous) python module
+        populated with requested values retrieved from the subprocess
+    """
+    from nbconvert.preprocessors.execute import executenb
+    from nbformat import write as write_notebook
+    from nbformat.notebooknode import from_dict as notebook_node_from_dict
+
+    from jupyter_client import KernelManager
+    from .NotebookPyFileReader import read_pyfile_as_notebook
+
+    _, extension = os.path.splitext(path_to_notebook)
+    if extension == ".ipynb":
+        is_ipynb = True
+    else:
+        is_ipynb = False
+
+    with open(path_to_notebook, 'r') as f:
+        if is_ipynb:
+            notebook = read_notebook(f, 4)
+        else:
+            notebook = read_pyfile_as_notebook(path_to_notebook)
+
+    def _block_and_receive_results(*return_values, save_output_notebook=None):
+
+        # add an extra cell to beginning of notebook to populate parameters
+        notebook_parameters = __notebookscripter_injected__ + [[hooks, {"return_values": return_values}]]
+        base64_parameters = obj_to_string_literal(notebook_parameters)
+
+        initialization_source = """from NotebookScripter import (rehydrate as __rehydrate__, dehydrate_return_values as __dehydrate_return_values__)
+__rehydrate__({})""".format(base64_parameters)
+
+        initialization_cell = notebook_node_from_dict({
+            "cell_type": "code",
+            "execution_count": 0,
+            "metadata": {},
+            "outputs": [],
+            "source": initialization_source
+        })
+
+        finalization_source = """__dehydrate_return_values__(locals())"""
+
+        finalization_cell = notebook_node_from_dict({
+            "cell_type": "code",
+            "execution_count": 0,
+            "metadata": {},
+            "outputs": [],
+            "source": finalization_source})
+
+        notebook['cells'].insert(0, initialization_cell)
+        notebook['cells'].append(finalization_cell)
+
+        km = KernelManager()
+        # hack -- needed because the code within ExecutePreprocessor.start_kernel to start
+        # the kernel when km hasn't started a kernel already can't possibly work
+        km.start_kernel()
+        executed_notebook = executenb(notebook, km=km)
+        km.shutdown_kernel()
+
+        if save_output_notebook:
+            if isinstance(save_output_notebook, str):
+                with open(save_output_notebook, 'w') as f:
+                    write_notebook(executed_notebook, f)
+            else:
+                write_notebook(executed_notebook, save_output_notebook)
+
+        encoded_return_values = eval(executed_notebook["cells"][-1]["outputs"][0]["data"]["text/plain"])
+        final_namespace = str_to_obj(encoded_return_values)
+
+        module_identity = "loaded_notebook_from_subprocess"
+        dynamic_module = types.ModuleType(module_identity)
+        dynamic_module.__file__ = path_to_notebook
+
+        # inject retrieved return values into the returned module namespace
+        dynamic_module.__dict__.update(final_namespace)
+        return dynamic_module
     return _block_and_receive_results

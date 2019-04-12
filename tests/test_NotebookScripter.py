@@ -2,7 +2,7 @@ import os
 import snapshottest
 
 import NotebookScripter
-from NotebookScripter.main import worker
+from NotebookScripter._main import worker
 
 from unittest.mock import patch
 
@@ -12,6 +12,7 @@ def filterKeys(aDict, filtered):
 
 
 # pylint: disable=E1101
+
 
 class TestNotebookExecution(snapshottest.TestCase):
     def setUp(self):
@@ -46,9 +47,21 @@ class TestNotebookExecution(snapshottest.TestCase):
         mod = NotebookScripter.run_notebook_in_process(self.notebook_file, parameterized_name="external world2", french_mode=True)(*return_values)
         self.assertMatchSnapshot(filterKeys(mod.__dict__, ["__file__"]))
 
+    def test_run_notebook_in_jupyter(self):
+        mod = NotebookScripter.run_notebook_in_jupyter(self.notebook_file)("parameterized_name", "french_mode")
+        self.assertMatchSnapshot(filterKeys(mod.__dict__, ["__file__", "__serialized_notebook__"]))
+
+    def test_run_notebook_in_jupyter_with_hooks(self):
+        return_values = ["parameterized_name", "french_mode", "greeting_string"]
+        mod = NotebookScripter.run_notebook_in_jupyter(self.notebook_file, parameterized_name="external world")(*return_values)
+        self.assertMatchSnapshot(filterKeys(mod.__dict__, ["__file__", "__serialized_notebook__"]))
+
+        mod = NotebookScripter.run_notebook_in_jupyter(self.notebook_file, parameterized_name="external world2", french_mode=True)(*return_values)
+        self.assertMatchSnapshot(filterKeys(mod.__dict__, ["__file__", "__serialized_notebook__"]))
+
     def test_run_with_backend_is_used(self):
         with self.assertRaises(Exception) as context:
-            with patch('NotebookScripter.main.__notebookscripter_injected__', [[{}, {}]]):
+            with patch('NotebookScripter._main.__notebookscripter_injected__', [[{}, {}]]):
                 NotebookScripter.set_notebook_option(with_matplotlib_backend="somefake")
                 NotebookScripter.run_notebook(self.notebook_file)
         print(str(context.exception))
@@ -84,7 +97,7 @@ class TestWorkerExecution(snapshottest.TestCase):
         hooks = {"parameterized_name": "external world"}
 
         worker(parent_to_child_queue, child_to_parent_queue, notebook, parent_parameters, **hooks)
-        err, mod = child_to_parent_queue._items[0]
+        _, mod = child_to_parent_queue._items[0]
 
         hello_repr = mod.pop("hello", None)
         self.assertTrue("function" in hello_repr)
@@ -94,6 +107,15 @@ class TestWorkerExecution(snapshottest.TestCase):
 class TestExecutePyFileAsNotebook(TestNotebookExecution):
     def setUp(self):
         self.notebook_file = os.path.join(os.path.dirname(__file__), "./Samples.pynotebook")
+
+
+class TestNotebookRender(snapshottest.TestCase):
+    def setUp(self):
+        self.notebook_file = os.path.join(os.path.dirname(__file__), "./Samples.pynotebook")
+        self.output_file = os.path.join(os.path.dirname(__file__), "./test.ipynb")
+
+    def test_render_notebook_from_vscode_style_pyfile(self):
+        NotebookScripter.run_notebook_in_jupyter(self.notebook_file)("parameterized_name", "french_mode", save_output_notebook=self.output_file)
 
 
 class TestRecursiveNotebookExecution(snapshottest.TestCase):
