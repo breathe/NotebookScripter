@@ -354,6 +354,7 @@ def run_notebook_in_process(
     """
 
     import multiprocessing as mp
+    import atexit
 
     context = mp.get_context("spawn")
     child_to_parent_queue = context.Queue()
@@ -361,6 +362,12 @@ def run_notebook_in_process(
 
     p = context.Process(target=worker, args=(parent_to_child_queue, child_to_parent_queue, path_to_notebook, __notebookscripter_injected__), kwargs=hooks)
     p.start()
+
+    def _terminate_when_parent_process_ends():
+        p.terminate()
+        p.join()
+
+    atexit.register(_terminate_when_parent_process_ends)
 
     def _block_and_receive_results(*return_values):
         """
@@ -371,6 +378,8 @@ def run_notebook_in_process(
         Args:
             return_values: Optional list of strings to pass back from subprocess -- values matching these names in the module created by invoking the notebook in a subprocess will be serialized passed across process boundaries back to this process, deserialized and made part of the returned module
         """
+
+        atexit.unregister(_terminate_when_parent_process_ends)
 
         parent_to_child_queue.put(return_values)
 

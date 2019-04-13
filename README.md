@@ -194,7 +194,7 @@ See [DEVELOPMENT_README.md](DEVELOPMENT_README.md)
 
 ### 5.1.0
 
-- Add new method: run_notebook_in_jupyter. Runs
+- Add new method: run_notebook_in_jupyter. Runs notebook's/.py files in a jupyter kernel - supports rendering jupyter notebook files with populated output cells.
 
 ### 5.0.0
 
