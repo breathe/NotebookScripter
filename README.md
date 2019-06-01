@@ -140,14 +140,14 @@ You can access this variable on the module object returned
 >>>
 ```
 
-In addition to \*args, the closure returned from `run_notebook_in_jupyter` also accepts an optional parameter `save_notebook_output` which is a file to which the rendered notebook should be written. Parameters passed to `run_notebook_in_jupyter` are included in the output notebook so that the notebook can be investigated/re-executed with the provided parameters.
+In addition to \*args, the closure returned from `run_notebook_in_jupyter` also accepts an optional parameter `save_output_notebook` which is a file to which the rendered notebook should be written. Parameters passed to `run_notebook_in_jupyter` are included in the output notebook so that the notebook can be investigated/re-executed with the provided parameters.
 
 ```python
 # output_notebook.ipynb will be a notebook file along with the rendered output cells
-module = run_notebook_in_jupyter("./Example.ipynb", a_useful_mode_switch="non_idiot_mode")("some_useful_value", save_notebook_output="output_notebook.ipynb")
+module = run_notebook_in_jupyter("./Example.ipynb", a_useful_mode_switch="non_idiot_mode")("some_useful_value", save_output_notebook="output_notebook.ipynb")
 
 # this also works to convert a .py file into a notebook
-module = run_notebook_in_jupyter("./Example.py", a_useful_mode_switch="non_idiot_mode")("some_useful_value", save_notebook_output="output_notebook.ipynb")
+module = run_notebook_in_jupyter("./Example.py", a_useful_mode_switch="non_idiot_mode")("some_useful_value", save_output_notebook="output_notebook.ipynb")
 ```
 
 NOTE: unlike run_notebook and run_notebook_in_process -- it is not currently possible to use the debugger/set breakpoints on code executed by run_notebook_in_jupyter.
