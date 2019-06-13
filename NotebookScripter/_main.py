@@ -469,7 +469,7 @@ __rehydrate__({})""".format(base64_parameters)
         # hack -- needed because the code within ExecutePreprocessor.start_kernel to start
         # the kernel when km hasn't started a kernel already can't possibly work
         km.start_kernel()
-        executed_notebook = executenb(notebook, km=km)
+        executed_notebook = executenb(notebook, timeout=None, km=km)
         km.shutdown_kernel()
 
         if save_output_notebook:

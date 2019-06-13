@@ -192,6 +192,10 @@ See [DEVELOPMENT_README.md](DEVELOPMENT_README.md)
 
 ## Changelog
 
+### 6.0.0
+
+- Make run_notebook_in_jupyter not error after 1200 time units when executing cells -- (sets timeout=None when calling executenb)
+
 ### 5.1.0
 
 - Add new method: run_notebook_in_jupyter. Runs notebook's/.py files in a jupyter kernel - supports rendering jupyter notebook files with populated output cells.
