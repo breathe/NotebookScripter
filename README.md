@@ -80,7 +80,7 @@ You can change the backend selection used by NotebookScripter by calling `Notebo
 
 ## Recursive run_notebook execution
 
-When run_notebook is invoked recursively, receive_parameter() will locate parameters by searching up the logical stack parameters passed to run_notebook invocations until it finds a match.
+When run_notebook is invoked recursively, receive_parameter() will locate parameters by searching up the logical stack of parameters passed to run_notebook invocations until it finds a match (similar to the behavior of parameters in a dynamically scoped language).
 
 Example:
 
