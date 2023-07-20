@@ -1,6 +1,6 @@
 # Docs analysis, same versions used by PyPI
 docutils==0.12
-pygments==2.7.4
+pygments==2.15.0
 
 # Code analysis
 flake8
